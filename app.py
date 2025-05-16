@@ -5,17 +5,17 @@ app = Flask(__name__)
 
 # Get all teams from standings API
 def get_teams():
-    url = "https://api-web.nhle.com/v1/standings/now"
+    url = "https://api-web.nhle.com/v1/teams"
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
         teams = []
-        for record in data['standings']:
+        for record in data:
             teams.append({
-                'id': record['teamId'],
-                'name': record['teamName'],
-                'abbreviation': record['teamAbbrev'],
-                'logo': record['teamLogo']
+                'id': record['id'],                         # <-- Numerical ID
+                'name': record['fullName'],
+                'abbreviation': record['abbrev'],
+                'logo': f"https://assets.nhle.com/logos/nhl/svg/{record['abbrev']}_light.svg"
             })
         return teams
     return []
