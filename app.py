@@ -1,154 +1,55 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Hockey Stats</title>
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-    integrity="sha384-ENjdO4Dr2bkBIFxQpeoA6VKH7Bv0F6N5U6g9T9QlWj9gqQ0gI5g5eJk5nQvZl3x2"
-    crossorigin="anonymous"
-  >
-  <style>
-    /* Full-screen spinner overlay while data loads */
-    #spinner-overlay {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(255,255,255,0.8);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 9999;
-    }
-  </style>
-</head>
-<body>
+import requests
+from flask import Flask, render_template, jsonify
 
-  <!-- Spinner Overlay -->
-  <div id="spinner-overlay">
-    <div class="spinner-border" role="status">
-      <span class="visually-hidden">Loading…</span>
-    </div>
-  </div>
+app = Flask(__name__, template_folder='templates')
 
-  <!-- Navbar with Divisions on the Left -->
-  <nav class="navbar navbar-expand-lg navbar-light bg-light">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="#">Hockey Stats</a>
-      <button
-        class="navbar-toggler"
-        type="button"
-        data-bs-toggle="collapse"
-        data-bs-target="#navbarDivisions"
-        aria-controls="navbarDivisions"
-        aria-expanded="false"
-        aria-label="Toggle navigation"
-      >
-        <span class="navbar-toggler-icon"></span>
-      </button>
+# Home route: serve index.html
+@app.route('/')
+def index():
+    return render_template('index.html')
 
-      <div class="collapse navbar-collapse" id="navbarDivisions">
-        <ul class="navbar-nav me-auto mb-2 mb-lg-0" id="division-nav">
-          <!-- Division dropdowns injected here -->
-        </ul>
-      </div>
-    </div>
-  </nav>
+# Return the teams grouped by division
+@app.route('/teams')
+def teams():
+    resp = requests.get('https://api-web.nhle.com/v1/standings/now').json()
+    divisions = {}
+    for t in resp['standings']:
+        div_name = t['divisionName']  # e.g. "Central", "Atlantic", etc.
+        divisions.setdefault(div_name, []).append({
+            'abbr': t['teamAbbrev']['default'],
+            'name': t['teamCommonName']['default'],
+            'logo': t['teamLogo']
+        })
+    return jsonify(divisions)
 
-  <!-- Main Content: Roster + stats -->
-  <div class="container mt-4" id="content"></div>
+# Return roster + current‐season stats for a given team
+@app.route('/roster/<team>')
+def roster(team):
+    # 1) fetch raw roster
+    r = requests.get(f'https://api-web.nhle.com/v1/roster/{team}/current').json()
+    players = r.get('forwards', []) + r.get('defensemen', []) + r.get('goalies', [])
 
-  <script
-    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
-    integrity="sha384-qENBo3uWyt5P1X0q8qz3dU44yRv76I3fZJtkME6Fqf3Z6MrBleGz+1l9Owi5W6tD"
-    crossorigin="anonymous"
-  ></script>
-  <script>
-    // 1) Load divisions & teams
-    async function loadTeams() {
-      const res = await fetch('/teams');
-      const divisions = await res.json();
-      const nav = document.getElementById('division-nav');
+    output = []
+    for p in players:
+        pid = p['id']
+        # 2) fetch landing (to get featuredStats → regularSeason.subSeason)
+        landing = requests.get(f'https://api-web.nhle.com/v1/player/{pid}/landing').json()
+        stats = landing.get('featuredStats', {}) \
+                       .get('regularSeason', {}) \
+                       .get('subSeason', {})
 
-      Object.entries(divisions).forEach(([div, teams]) => {
-        const li = document.createElement('li');
-        li.className = 'nav-item dropdown';
-        li.innerHTML = `
-          <a
-            class="nav-link dropdown-toggle"
-            href="#"
-            id="nav-${div}"
-            role="button"
-            data-bs-toggle="dropdown"
-            aria-expanded="false"
-          >${div}</a>
-          <ul class="dropdown-menu" aria-labelledby="nav-${div}">
-            ${teams.map(team => `
-              <li>
-                <a
-                  class="dropdown-item d-flex align-items-center"
-                  href="#"
-                  onclick="loadRoster('${team.abbr}')"
-                >
-                  <img src="${team.logo}" width="20" class="me-2"/>
-                  ${team.name}
-                </a>
-              </li>
-            `).join('')}
-          </ul>
-        `;
-        nav.appendChild(li);
-      });
-    }
+        output.append({
+            'number': p.get('sweaterNumber'),
+            'name': f"{p['firstName']['default']} {p['lastName']['default']}",
+            'headshot': p.get('headshot'),
+            'pos': p.get('positionCode'),
+            'gp': stats.get('gamesPlayed', 0),
+            'g':  stats.get('goals', 0),
+            'a':  stats.get('assists', 0),
+            'p':  stats.get('points', 0)
+        })
 
-    // 2) Load a team's roster + render compact table with stats
-    async function loadRoster(abbrev) {
-      document.getElementById('content').innerHTML = '';
-      const res = await fetch(`/roster/${abbrev}`);
-      const players = await res.json();
+    return jsonify(output)
 
-      const table = document.createElement('table');
-      table.className = 'table table-sm table-striped';
-      table.innerHTML = `
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Player</th>
-            <th>Pos</th>
-            <th>GP</th>
-            <th>G</th>
-            <th>A</th>
-            <th>P</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${players.map(p => `
-            <tr>
-              <td>${p.number || ''}</td>
-              <td class="d-flex align-items-center">
-                <img src="${p.headshot}" width="24" class="me-2 rounded-circle"/>
-                ${p.name}
-              </td>
-              <td>${p.pos}</td>
-              <td>${p.gp}</td>
-              <td>${p.g}</td>
-              <td>${p.a}</td>
-              <td>${p.p}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      `;
-
-      document.getElementById('content').appendChild(table);
-    }
-
-    // On load: get teams, then hide spinner
-    window.addEventListener('DOMContentLoaded', async () => {
-      await loadTeams();
-      document.getElementById('spinner-overlay').style.display = 'none';
-    });
-  </script>
-</body>
-</html>
+if __name__ == '__main__':
+    app.run(debug=True)
