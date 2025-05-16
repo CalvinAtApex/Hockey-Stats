@@ -1,11 +1,12 @@
-from flask import Flask, jsonify, render_template, send_from_directory
+from flask import Flask, jsonify, send_from_directory
 import requests
+import os
 
-app = Flask(__name__, static_folder='static', template_folder='.')
+app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return send_from_directory('.', 'index.html')
 
 @app.route('/teams')
 def get_teams():
@@ -56,4 +57,5 @@ def get_player_stats(player_id):
     return jsonify(player_info)
 
 if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+    port = int(os.environ.get('PORT', 5000))
+    app.run(host='0.0.0.0', port=port)
