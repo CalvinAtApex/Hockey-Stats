@@ -4,3 +4,4 @@ gunicorn
 requests
 Flask-Login
 Flask-Security-Too
+Flask-SQLAlchemy
