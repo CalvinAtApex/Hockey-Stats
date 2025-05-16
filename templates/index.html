@@ -6,11 +6,13 @@
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
         body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f9f9f9; }
-        .navbar { background: #00205b; padding: 10px; color: white; display: flex; flex-wrap: wrap; }
-        .division { margin-right: 20px; }
-        .division h3 { margin: 0 0 5px 0; font-size: 16px; }
-        .team-link { display: flex; align-items: center; margin-bottom: 5px; cursor: pointer; color: white; text-decoration: none; }
-        .team-link img { width: 20px; height: 20px; margin-right: 5px; }
+        .navbar { background: #00205b; overflow: hidden; display: flex; }
+        .dropdown { position: relative; display: inline-block; }
+        .dropbtn { color: white; padding: 14px 16px; text-decoration: none; background: none; border: none; cursor: pointer; font-size: 16px; }
+        .dropdown-content { display: none; position: absolute; background-color: #ffffff; min-width: 200px; z-index: 1; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); }
+        .dropdown-content .team-link { color: black; padding: 10px; text-decoration: none; display: flex; align-items: center; cursor: pointer; }
+        .dropdown-content .team-link img { width: 20px; height: 20px; margin-right: 10px; }
+        .dropdown:hover .dropdown-content { display: block; }
         table { border-collapse: collapse; width: 100%; margin-top: 20px; }
         th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
         th { background-color: #e0e0e0; }
@@ -20,7 +22,7 @@
 <body>
 
 <div class="navbar" id="navbar">
-    <!-- Divisions and Teams will be populated here -->
+    <!-- Divisions Dropdown will go here -->
 </div>
 
 <div class="content">
@@ -63,12 +65,17 @@ $(document).ready(function() {
         });
 
         for (const [division, teams] of Object.entries(divisions)) {
-            const div = $('<div>').addClass('division').append(`<h3>${division}</h3>`);
+            const dropdown = $('<div>').addClass('dropdown');
+            const dropbtn = $(`<button class="dropbtn">${division}</button>`);
+            const dropdownContent = $('<div>').addClass('dropdown-content');
+
             teams.forEach(team => {
                 const link = $(`<div class="team-link" data-abbrev="${team.abbrev}"><img src="${team.logo}"> ${team.name}</div>`);
-                div.append(link);
+                dropdownContent.append(link);
             });
-            $('#navbar').append(div);
+
+            dropdown.append(dropbtn).append(dropdownContent);
+            $('#navbar').append(dropdown);
         }
 
         $('.team-link').click(function() {
