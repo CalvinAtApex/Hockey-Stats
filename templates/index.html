@@ -10,13 +10,14 @@
     <form method="POST">
         <label for="team">Select a Team:</label>
         <select name="team" id="team" required>
-            <option value="">-- Choose a team --</option>
-            {% for team in teams %}
-                <option value="{{ team.id }}" {% if selected_team == team.id %}selected{% endif %}>
-                    {{ team.name }}
-                </option>
-            {% endfor %}
-        </select>
+    <option value="">-- Choose a team --</option>
+    {% for team in teams %}
+        <option value="{{ team.id }}" {% if selected_team == team.id %}selected{% endif %}>
+            {{ team.name }}
+        </option>
+    {% endfor %}
+</select>
+
         <button type="submit">Show Players</button>
     </form>
 
