@@ -2,41 +2,59 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>NHL Player Stats Viewer</title>
+    <title>NHL Team Roster Viewer</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { text-align: center; }
+        form { text-align: center; margin: 20px 0; }
+        select, button {
+            padding: 10px;
+            font-size: 16px;
+        }
+        .team-grid {
+            display: flex;
+            flex-wrap: wrap;
+            justify-content: center;
+            gap: 20px;
+        }
+        .team-card {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 10px;
+            width: 150px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .team-card img {
+            width: 100px;
+            height: auto;
+            margin-bottom: 10px;
+        }
+        .team-card a {
+            text-decoration: none;
+            color: #333;
+            font-weight: bold;
+        }
+    </style>
 </head>
 <body>
-    <h1>NHL Player Stats Viewer</h1>
 
-    <form method="POST">
-        <label for="team">Select a Team:</label>
-        <select name="team" id="team" required>
-    <option value="">-- Choose a team --</option>
-    {% for team in teams %}
-        <option value="{{ team.id }}" {% if selected_team == team.id %}selected{% endif %}>
-            {{ team.name }}
-        </option>
-    {% endfor %}
-</select>
+    <h1>NHL Team Roster Viewer</h1>
 
-        <button type="submit">Show Players</button>
-    </form>
-
-    {% if players %}
-        <h2>Players</h2>
-        <table border="1">
-            <tr>
-                <th>Name</th>
-                <th>Position</th>
-                <th>Jersey Number</th>
-            </tr>
-            {% for player in players %}
-                <tr>
-                    <td>{{ player.person.fullName }}</td>
-                    <td>{{ player.position.abbreviation }}</td>
-                    <td>{{ player.jerseyNumber or 'N/A' }}</td>
-                </tr>
-            {% endfor %}
-        </table>
+    {% if teams %}
+    <div class="team-grid">
+        {% for team in teams %}
+        <div class="team-card">
+            <a href="/roster/{{ team.abbrev }}">
+                <img src="{{ team.logo }}" alt="{{ team.name }}">
+                <div>{{ team.name }}</div>
+            </a>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+        <p style="text-align:center;">No teams available.</p>
     {% endif %}
+
 </body>
 </html>
