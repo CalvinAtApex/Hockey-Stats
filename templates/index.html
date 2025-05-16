@@ -2,43 +2,30 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>NHL Team Roster</title>
+    <title>NHL Team Stats</title>
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            padding: 20px;
-        }
-        .team {
-            cursor: pointer;
-            margin: 10px 0;
-            display: flex;
-            align-items: center;
-        }
-        .team img {
-            width: 40px;
-            height: 40px;
-            margin-right: 10px;
-        }
-        table {
-            width: 100%;
-            border-collapse: collapse;
-            margin-top: 20px;
-        }
-        th, td {
-            border: 1px solid #ddd;
-            padding: 8px;
-            text-align: center;
-        }
-        th {
-            background-color: #f4f4f4;
-        }
+        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f9f9f9; }
+        .navbar { background: #00205b; padding: 10px; color: white; display: flex; flex-wrap: wrap; }
+        .division { margin-right: 20px; }
+        .division h3 { margin: 0 0 5px 0; font-size: 16px; }
+        .team-link { display: flex; align-items: center; margin-bottom: 5px; cursor: pointer; color: white; text-decoration: none; }
+        .team-link img { width: 20px; height: 20px; margin-right: 5px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
+        th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
+        th { background-color: #e0e0e0; }
+        #roster-title { margin: 20px 0 10px 0; font-size: 20px; }
     </style>
 </head>
 <body>
-    <h1>NHL Team Roster</h1>
-    <div id="teams"></div>
+
+<div class="navbar" id="navbar">
+    <!-- Divisions and Teams will be populated here -->
+</div>
+
+<div class="content">
     <h2 id="roster-title"></h2>
-    <table id="roster-table" style="display: none;">
+    <table id="roster-table">
         <thead>
             <tr>
                 <th>#</th>
@@ -48,52 +35,63 @@
                 <th>Assists</th>
             </tr>
         </thead>
-        <tbody id="roster-body"></tbody>
+        <tbody></tbody>
     </table>
+</div>
 
-    <script>
-        async function fetchTeams() {
-            const response = await fetch('/teams');
-            const teams = await response.json();
+<script>
+$(document).ready(function() {
+    $.get('/teams', function(teams) {
+        const divisions = {
+            'Atlantic': [],
+            'Metropolitan': [],
+            'Central': [],
+            'Pacific': []
+        };
 
-            const teamsDiv = document.getElementById('teams');
-            teamsDiv.innerHTML = '';
+        teams.forEach(team => {
+            const abbrev = team.abbrev;
+            if (['BOS', 'BUF', 'DET', 'FLA', 'MTL', 'OTT', 'TBL', 'TOR'].includes(abbrev)) {
+                divisions['Atlantic'].push(team);
+            } else if (['CAR', 'CBJ', 'NJD', 'NYI', 'NYR', 'PHI', 'PIT', 'WSH'].includes(abbrev)) {
+                divisions['Metropolitan'].push(team);
+            } else if (['ARI', 'CHI', 'COL', 'DAL', 'MIN', 'NSH', 'STL', 'WPG', 'UTA'].includes(abbrev)) {
+                divisions['Central'].push(team);
+            } else if (['ANA', 'CGY', 'EDM', 'LAK', 'SEA', 'SJS', 'VAN', 'VGK'].includes(abbrev)) {
+                divisions['Pacific'].push(team);
+            }
+        });
 
+        for (const [division, teams] of Object.entries(divisions)) {
+            const div = $('<div>').addClass('division').append(`<h3>${division}</h3>`);
             teams.forEach(team => {
-                const div = document.createElement('div');
-                div.className = 'team';
-                div.innerHTML = `<img src="${team.logo}" alt="${team.abbrev}"> ${team.name}`;
-                div.addEventListener('click', () => fetchRoster(team.abbrev, team.name));
-                teamsDiv.appendChild(div);
+                const link = $(`<div class="team-link" data-abbrev="${team.abbrev}"><img src="${team.logo}"> ${team.name}</div>`);
+                div.append(link);
             });
+            $('#navbar').append(div);
         }
 
-        async function fetchRoster(abbrev, teamName) {
-            const response = await fetch(`/roster/${abbrev}`);
-            const players = await response.json();
-
-            document.getElementById('roster-title').innerText = `${teamName} Roster`;
-            const rosterTable = document.getElementById('roster-table');
-            const rosterBody = document.getElementById('roster-body');
-
-            rosterBody.innerHTML = '';
-
-            players.forEach(player => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${player.sweaterNumber}</td>
-                    <td>${player.name}</td>
-                    <td>${player.position}</td>
-                    <td>${player.goals}</td>
-                    <td>${player.assists}</td>
-                `;
-                rosterBody.appendChild(row);
+        $('.team-link').click(function() {
+            const abbrev = $(this).data('abbrev');
+            $('#roster-title').text(`Roster for ${abbrev}`);
+            $.get(`/roster/${abbrev}`, function(players) {
+                const tbody = $('#roster-table tbody').empty();
+                players.forEach(player => {
+                    tbody.append(`
+                        <tr>
+                            <td>${player.sweaterNumber}</td>
+                            <td>${player.name}</td>
+                            <td>${player.position}</td>
+                            <td>${player.goals}</td>
+                            <td>${player.assists}</td>
+                        </tr>
+                    `);
+                });
             });
+        });
+    });
+});
+</script>
 
-            rosterTable.style.display = 'table';
-        }
-
-        fetchTeams();
-    </script>
 </body>
 </html>
