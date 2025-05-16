@@ -14,12 +14,14 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///app
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Flask-Security configuration
-app.config['SECURITY_PASSWORD_HASH'] = 'bcrypt'
-app.config['SECURITY_PASSWORD_SALT'] = os.getenv('SECURITY_PASSWORD_SALT', 'salty-secret')
-app.config['SECURITY_REGISTERABLE'] = False
-app.config['SECURITY_SEND_REGISTER_EMAIL'] = False
-app.config['SECURITY_RECOVERABLE'] = False
-app.config['SECURITY_CHANGEABLE'] = False
+app.config.update(
+    SECURITY_PASSWORD_HASH='bcrypt',
+    SECURITY_PASSWORD_SALT=os.getenv('SECURITY_PASSWORD_SALT', 'salty-secret'),
+    SECURITY_REGISTERABLE=False,
+    SECURITY_SEND_REGISTER_EMAIL=False,
+    SECURITY_RECOVERABLE=False,
+    SECURITY_CHANGEABLE=False,
+)
 
 # ─── Extensions ─────────────────────────────────────────────────────────────────
 db = SQLAlchemy(app)
@@ -37,40 +39,36 @@ class Role(db.Model, RoleMixin):
     description = db.Column(db.String(255))
 
 class User(db.Model, UserMixin):
-    id              = db.Column(db.Integer, primary_key=True)
-    email           = db.Column(db.String(255), unique=True, nullable=False)
-    password        = db.Column(db.String(255), nullable=False)
-    fs_uniquifier   = db.Column(
-                        db.String(255),
-                        unique=True,
-                        nullable=False,
-                        default=lambda: str(uuid.uuid4())
-                     )
-    active          = db.Column(db.Boolean(), default=True)
-    roles           = db.relationship('Role', secondary=roles_users,
-                                      backref=db.backref('users', lazy='dynamic'))
+    id            = db.Column(db.Integer, primary_key=True)
+    email         = db.Column(db.String(255), unique=True, nullable=False)
+    password      = db.Column(db.String(255), nullable=False)
+    fs_uniquifier = db.Column(
+                      db.String(255),
+                      unique=True,
+                      nullable=False,
+                      default=lambda: str(uuid.uuid4())
+                    )
+    active        = db.Column(db.Boolean(), default=True)
+    roles         = db.relationship('Role', secondary=roles_users,
+                                    backref=db.backref('users', lazy='dynamic'))
 
 user_datastore = SQLAlchemyUserDatastore(db, User, Role)
 security = Security(app, user_datastore)
 
-# ─── One-time setup before first request ─────────────────────────────────────────
-@app.before_first_request
 def initialize_security():
+    """Create DB tables and a default admin user/role if they don't exist."""
     db.create_all()
 
-    # Create 'admin' role if missing
-    admin_role = user_datastore.find_role('admin')
-    if not admin_role:
-        admin_role = user_datastore.create_role(
-            name='admin',
-            description='Site Administrator'
-        )
+    # ensure the 'admin' role exists
+    admin_role = user_datastore.find_role('admin') or user_datastore.create_role(
+        name='admin',
+        description='Site Administrator'
+    )
 
-    # Create default admin user if missing
+    # ensure the default admin user exists
     admin_email = os.getenv('ADMIN_EMAIL', 'admin@example.com')
     admin_password = os.getenv('ADMIN_PASSWORD', 'password')
-    admin_user = user_datastore.find_user(email=admin_email)
-    if not admin_user:
+    if not user_datastore.find_user(email=admin_email):
         user_datastore.create_user(
             email=admin_email,
             password=hash_password(admin_password),
@@ -78,6 +76,10 @@ def initialize_security():
         )
 
     db.session.commit()
+
+# run it immediately on startup (no missing‐hook errors)
+with app.app_context():
+    initialize_security()
 
 # ─── Routes ────────────────────────────────────────────────────────────────────
 @app.route('/')
