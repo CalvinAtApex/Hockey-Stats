@@ -12,28 +12,34 @@ TEAM_ID_MAP = {
     "VAN": 23, "VGK": 54, "WSH": 15, "WPG": 52, "UTA": 56
 }
 
-def get_teams():
-    url = "https://api-web.nhle.com/v1/standings/now"
+def get_team_roster(team_abbrev, season="20242025"):
+    url = f"https://api-web.nhle.com/v1/roster/{team_abbrev}/{season}"
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
-        teams = []
-        for record in data['standings']:
-            teams.append({
-                'id': record['teamAbbrev']['default'],  # Using abbrev as selection ID
-                'name': record['teamName']['default'],
-                'abbreviation': record['teamAbbrev']['default'],
-                'logo': record['teamLogo'],
-                'points': record['points'],
-                'wins': record['wins'],
-                'losses': record['losses'],
-                'otLosses': record['otLosses'],
-                'place': record['placeName']['default']
+        players = []
+        
+        # Combine all player types
+        player_groups = data.get('forwards', []) + data.get('defensemen', []) + data.get('goalies', [])
+        
+        for player in player_groups:
+            players.append({
+                'name': f"{player['firstName']['default']} {player['lastName']['default']}",
+                'position': player['positionCode'],
+                'sweaterNumber': player.get('sweaterNumber', ''),
+                'headshot': player.get('headshot', ''),
+                'shootsCatches': player.get('shootsCatches', ''),
+                'birthDate': player.get('birthDate', ''),
+                'heightInches': player.get('heightInInches', ''),
+                'weightPounds': player.get('weightInPounds', ''),
+                'birthCity': player.get('birthCity', {}).get('default', ''),
+                'birthCountry': player.get('birthCountry', '')
             })
-        return teams
+        return players
     else:
-        print(f"Failed to fetch standings: {response.status_code} - {response.text}")
+        print(f"Failed to fetch roster for {team_abbrev}: {response.status_code} - {response.text}")
     return []
+
 
 def get_team_roster(team_abbrev):
     team_id = TEAM_ID_MAP.get(team_abbrev)
