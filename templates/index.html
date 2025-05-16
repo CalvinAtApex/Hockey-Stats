@@ -9,11 +9,11 @@
         .navbar {
             position: fixed; top: 0; left: 0; width: 100%;
             background: #00205b; color: white;
-            display: flex; align-items: center; justify-content: space-around;
+            display: flex; align-items: center; justify-content: center;
             padding: 0; z-index: 1000; height: 60px;
         }
         .dropdown {
-            position: relative;
+            position: relative; margin: 0 10px;
         }
         .dropbtn {
             color: white; padding: 14px 16px;
@@ -21,8 +21,8 @@
             cursor: pointer; font-size: 16px;
         }
         .dropdown-content {
-            display: none; position: absolute; top: 100%;
-            background: white; min-width: 200px;
+            display: none; position: absolute; top: 100%; left: 0;
+            background: white; min-width: 220px;
             z-index: 999; box-shadow: 0 8px 16px rgba(0,0,0,0.2);
         }
         .dropdown-content .team-link {
@@ -34,17 +34,6 @@
             width: 20px; height: 20px; margin-right: 10px;
         }
         .dropdown:hover .dropdown-content { display: block; }
-
-        .hamburger { display: none; cursor: pointer; font-size: 24px; margin-left: auto; }
-        .mobile-menu { display: none; flex-direction: column; background: #00205b; position: fixed; top: 60px; width: 100%; z-index: 999; }
-        .mobile-menu.active { display: flex; }
-        .mobile-menu .dropdown-content { position: static; box-shadow: none; }
-
-        @media (max-width: 768px) {
-            .navbar { justify-content: space-between; }
-            .dropdown { display: none; }
-            .hamburger { display: block; }
-        }
 
         table { border-collapse: collapse; width: 100%; margin-top: 20px; }
         th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
@@ -58,15 +47,17 @@
             animation: spin 1s linear infinite;
         }
         @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        @media (max-width: 768px) {
+            .navbar { flex-wrap: wrap; height: auto; }
+            .dropdown { width: 100%; text-align: center; margin: 0; }
+            .dropdown-content { position: static; box-shadow: none; }
+        }
     </style>
 </head>
 <body>
 
-<div class="navbar">
-    <div class="dropdowns"></div>
-    <div class="hamburger">&#9776;</div>
-</div>
-<div class="mobile-menu"></div>
+<div class="navbar"></div>
 
 <div class="content">
     <h2 id="roster-title"></h2>
@@ -89,8 +80,8 @@
 $(document).ready(function() {
     const divisions = { Atlantic: [], Metropolitan: [], Central: [], Pacific: [] };
 
-    function buildDropdowns(container) {
-        container.empty();
+    function buildNavBar() {
+        const navbar = $('.navbar').empty();
         for (const [division, teams] of Object.entries(divisions)) {
             const dropdown = $('<div>').addClass('dropdown');
             const dropbtn = $(`<button class="dropbtn">${division}</button>`);
@@ -102,7 +93,7 @@ $(document).ready(function() {
             });
 
             dropdown.append(dropbtn).append(dropdownContent);
-            container.append(dropdown);
+            navbar.append(dropdown);
         }
     }
 
@@ -115,8 +106,7 @@ $(document).ready(function() {
             else if (['ANA','CGY','EDM','LAK','SEA','SJS','VAN','VGK'].includes(abbrev)) divisions['Pacific'].push(team);
         });
 
-        buildDropdowns($('.dropdowns'));   // Desktop
-        buildDropdowns($('.mobile-menu')); // Mobile
+        buildNavBar();
 
         $(document).on('click', '.team-link', function() {
             const abbrev = $(this).data('abbrev');
@@ -138,10 +128,6 @@ $(document).ready(function() {
                 });
             });
         });
-    });
-
-    $('.hamburger').click(function() {
-        $('.mobile-menu').toggleClass('active');
     });
 });
 </script>
