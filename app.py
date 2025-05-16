@@ -11,15 +11,16 @@ def get_teams():
         teams = []
         for record in data['standings']:
             teams.append({
-                'id': record['teamId'],            
-                'name': record['teamName'],
-                'abbreviation': record['teamAbbrev'],
-                'logo': record['teamLogo']
+                'id': record['teamAbbrev']['default'],  # Use abbrev as ID
+                'name': record['teamName']['default'],  # Team name
+                'abbreviation': record['teamAbbrev']['default'],  # Abbrev for logos/keys
+                'logo': record['teamLogo']  # Logo URL directly
             })
         return teams
     else:
         print(f"Failed to fetch teams: {response.status_code} - {response.text}")
     return []
+
 
 
 def get_team_players(team_id):
