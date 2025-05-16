@@ -4,93 +4,69 @@
     <meta charset="UTF-8">
     <title>NHL Team Roster Viewer</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        h1 { text-align: center; }
-        .team-select { text-align: center; margin: 20px 0; }
-        select { padding: 10px; font-size: 16px; }
-        .roster-grid {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 20px;
-        }
-        .player-card {
-            border: 1px solid #ddd;
-            border-radius: 10px;
-            padding: 10px;
-            width: 150px;
-            text-align: center;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-        }
-        .player-card img {
-            width: 100px;
-            height: auto;
-            margin-bottom: 10px;
-        }
-        .player-name {
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        .player-info {
-            font-size: 14px;
-        }
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .team-logo { height: 32px; vertical-align: middle; margin-right: 10px; }
+        .roster-card { border: 1px solid #ccc; padding: 10px; margin: 10px 0; display: flex; align-items: center; }
+        .roster-card img { height: 80px; width: 80px; margin-right: 10px; object-fit: cover; }
     </style>
 </head>
 <body>
-
     <h1>NHL Team Roster Viewer</h1>
 
-    <div class="team-select">
-        <select id="teamSelector">
-            <option value="">Select a team</option>
-            {% for team in teams %}
-                <option value="{{ team.abbrev }}">{{ team.name }}</option>
-            {% endfor %}
-        </select>
+    <label for="teamSelect">Select a Team:</label>
+    <select id="teamSelect">
+        <option value="">--Select a Team--</option>
+        {% for team in teams %}
+            <option value="{{ team.abbreviation }}">{{ team.name }}</option>
+        {% endfor %}
+    </select>
+
+    <div id="rosterContainer">
+        <!-- Roster will be loaded here -->
     </div>
 
-    <div id="rosterContainer" class="roster-grid"></div>
-
     <script>
-        const teamSelector = document.getElementById('teamSelector');
-        const rosterContainer = document.getElementById('rosterContainer');
+        document.getElementById('teamSelect').addEventListener('change', function() {
+            const teamAbbrev = this.value;
+            const container = document.getElementById('rosterContainer');
+            container.innerHTML = '';
 
-        teamSelector.addEventListener('change', () => {
-            const teamAbbrev = teamSelector.value;
-            if (!teamAbbrev) return rosterContainer.innerHTML = '';
+            if (!teamAbbrev) return;
 
             fetch(`/roster/${teamAbbrev}`)
                 .then(response => response.json())
                 .then(data => {
-                    rosterContainer.innerHTML = '';
+                    if (data.error) {
+                        container.innerHTML = `<p style="color:red;">${data.error}</p>`;
+                        return;
+                    }
 
-                    const groups = ['forwards', 'defensemen', 'goalies'];
+                    if (data.length === 0) {
+                        container.innerHTML = '<p>No roster data available.</p>';
+                        return;
+                    }
 
-                    groups.forEach(group => {
-                        if (data[group]) {
-                            data[group].forEach(player => {
-                                const card = document.createElement('div');
-                                card.className = 'player-card';
-
-                                card.innerHTML = `
-                                    <img src="${player.headshot}" alt="${player.firstName} ${player.lastName}">
-                                    <div class="player-name">${player.firstName} ${player.lastName}</div>
-                                    <div class="player-info">#${player.sweaterNumber} | ${player.positionCode}</div>
-                                    <div class="player-info">${player.heightInInches}" | ${player.weightInPounds} lbs</div>
-                                    <div class="player-info">${player.birthCity}, ${player.birthCountry}</div>
-                                `;
-
-                                rosterContainer.appendChild(card);
-                            });
-                        }
+                    data.forEach(player => {
+                        const card = document.createElement('div');
+                        card.className = 'roster-card';
+                        card.innerHTML = `
+                            <img src="${player.headshot}" alt="${player.name}">
+                            <div>
+                                <strong>#${player.number} ${player.name}</strong><br>
+                                Position: ${player.position}<br>
+                                Shoots/Catches: ${player.shootsCatches}<br>
+                                Height: ${player.height} | Weight: ${player.weight}<br>
+                                Birthdate: ${player.birthDate} (${player.birthPlace})
+                            </div>
+                        `;
+                        container.appendChild(card);
                     });
                 })
                 .catch(err => {
-                    rosterContainer.innerHTML = '<p>Error loading roster.</p>';
                     console.error(err);
+                    container.innerHTML = '<p style="color:red;">Error loading roster.</p>';
                 });
         });
     </script>
-
 </body>
 </html>
