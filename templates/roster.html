@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ team }} Roster</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        h1 { text-align: center; }
+        .roster { display: flex; flex-wrap: wrap; justify-content: center; gap: 20px; }
+        .player-card {
+            border: 1px solid #ddd;
+            border-radius: 10px;
+            padding: 10px;
+            width: 200px;
+            text-align: center;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .player-card img {
+            width: 100px;
+            height: 100px;
+            object-fit: cover;
+            border-radius: 50%;
+        }
+        .back-link { display: block; text-align: center; margin-bottom: 20px; }
+    </style>
+</head>
+<body>
+
+    <a class="back-link" href="/">← Back to Teams</a>
+    <h1>{{ team }} Roster</h1>
+
+    {% if players %}
+    <div class="roster">
+        {% for player in players %}
+        <div class="player-card">
+            <img src="{{ player.headshot }}" alt="{{ player.name }}">
+            <h3>{{ player.name }}</h3>
+            <p>#{{ player.sweaterNumber }} | {{ player.position }}</p>
+            <p>{{ player.shootsCatches }} Handed</p>
+            <p>{{ player.heightInches }} in | {{ player.weightPounds }} lbs</p>
+            <p>{{ player.birthCity }}, {{ player.birthCountry }}</p>
+            <p>Born: {{ player.birthDate }}</p>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+        <p>No roster data available for {{ team }}.</p>
+    {% endif %}
+
+</body>
+</html>
