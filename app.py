@@ -1,85 +1,55 @@
-# app.py
-from flask import Flask, render_template, jsonify
 import requests
+from flask import Flask, render_template, jsonify
 
-API_BASE = 'https://api-web.nhle.com/v1'
+app = Flask(__name__, template_folder='templates')
 
-app = Flask(__name__,
-            template_folder='templates',
-            static_folder='static')
-
-
+# Home route: serve index.html
 @app.route('/')
-def home():
+def index():
     return render_template('index.html')
 
-
+# Return the teams grouped by division
 @app.route('/teams')
 def teams():
-    resp = requests.get(f'{API_BASE}/standings/now')
-    data = resp.json().get('standings', [])
+    resp = requests.get('https://api-web.nhle.com/v1/standings/now').json()
     divisions = {}
-    for t in data:
-        # divisionAbbrev is a plain string in the API now
-        div = t['divisionAbbrev']
-        divisions.setdefault(div, []).append({
+    for t in resp['standings']:
+        div_name = t['divisionName']  # e.g. "Central", "Atlantic", etc.
+        divisions.setdefault(div_name, []).append({
             'abbr': t['teamAbbrev']['default'],
             'name': t['teamCommonName']['default'],
             'logo': t['teamLogo']
         })
     return jsonify(divisions)
 
+# Return roster + current‐season stats for a given team
+@app.route('/roster/<team>')
+def roster(team):
+    # 1) fetch raw roster
+    r = requests.get(f'https://api-web.nhle.com/v1/roster/{team}/current').json()
+    players = r.get('forwards', []) + r.get('defensemen', []) + r.get('goalies', [])
 
-@app.route('/roster/<team_abbrev>')
-def roster(team_abbrev):
-    resp = requests.get(f'{API_BASE}/roster/{team_abbrev}/current')
-    data = resp.json()
-    players = []
-    for grp in ('forwards', 'defensemen', 'goalies'):
-        for p in data.get(grp, []):
-            players.append({
-                'id':       p['id'],
-                'name':     f"{p['firstName']['default']} {p['lastName']['default']}",
-                'number':   p.get('sweaterNumber'),
-                'pos':      p.get('positionCode'),
-                'headshot': p.get('headshot')
-            })
-    return jsonify(players)
+    output = []
+    for p in players:
+        pid = p['id']
+        # 2) fetch landing (to get featuredStats → regularSeason.subSeason)
+        landing = requests.get(f'https://api-web.nhle.com/v1/player/{pid}/landing').json()
+        stats = landing.get('featuredStats', {}) \
+                       .get('regularSeason', {}) \
+                       .get('subSeason', {})
 
+        output.append({
+            'number': p.get('sweaterNumber'),
+            'name': f"{p['firstName']['default']} {p['lastName']['default']}",
+            'headshot': p.get('headshot'),
+            'pos': p.get('positionCode'),
+            'gp': stats.get('gamesPlayed', 0),
+            'g':  stats.get('goals', 0),
+            'a':  stats.get('assists', 0),
+            'p':  stats.get('points', 0)
+        })
 
-@app.route('/player/<int:player_id>')
-def player(player_id):
-    resp = requests.get(f'{API_BASE}/player/{player_id}/landing')
-    d = resp.json()
-
-    fs = d.get('featuredStats', {})
-    reg = fs.get('regularSeason', {}).get('subSeason', {})
-    po  = fs.get('playoffs',      {}).get('subSeason', {})
-
-    out = {
-        'id':       player_id,
-        'name':     f"{d['firstName']['default']} {d['lastName']['default']}",
-        'team':     d.get('currentTeamAbbrev'),
-        'position': d.get('position'),
-        'headshot': d.get('headshot'),
-        'regular': {
-            'season':    fs.get('season'),
-            'games':     reg.get('gamesPlayed'),
-            'goals':     reg.get('goals'),
-            'assists':   reg.get('assists'),
-            'points':    reg.get('points'),
-            'plusMinus': reg.get('plusMinus')
-        },
-        'playoffs': {
-            'games':     po.get('gamesPlayed'),
-            'goals':     po.get('goals'),
-            'assists':   po.get('assists'),
-            'points':    po.get('points'),
-            'plusMinus': po.get('plusMinus')
-        }
-    }
-    return jsonify(out)
-
+    return jsonify(output)
 
 if __name__ == '__main__':
     app.run(debug=True)
