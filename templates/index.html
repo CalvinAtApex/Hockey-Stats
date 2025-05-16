@@ -30,9 +30,9 @@
             </tr>
             {% for player in players %}
                 <tr>
-                    <td>{{ player.full_name }}</td>
-                    <td>{{ player.primary_position }}</td>
-                    <td>{{ player.jersey_number or 'N/A' }}</td>
+                    <td>{{ player.person.fullName }}</td>
+                    <td>{{ player.position.abbreviation }}</td>
+                    <td>{{ player.jerseyNumber or 'N/A' }}</td>
                 </tr>
             {% endfor %}
         </table>
