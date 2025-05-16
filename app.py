@@ -24,7 +24,7 @@ async def get_teams():
         teams.append({
             "id": team_data.get("id"),
             "abbrev": team_data.get("abbrev"),
-            "name": team_data.get("fullName", {}).get("default")
+            "name": team_data.get("fullName", {}).get("default", team_data.get("commonName", {}).get("default", team_data.get("abbrev")))
         })
 
     return jsonify(teams)
@@ -38,6 +38,7 @@ async def get_roster(team_abbrev):
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as resp:
             if resp.status != 200:
+                print(f"Roster fetch failed for {team_abbrev}: {resp.status}")
                 return jsonify({"error": "Failed to fetch roster"}), 500
             roster_data = await resp.json()
 
@@ -59,7 +60,7 @@ async def get_roster(team_abbrev):
     return jsonify(players)
 
 async def get_player_stats(session, player_id):
-    url = f"https://api-web.nhle.com/v1/player/{player_id}/landing"
+    url = f"{BASE_URL}/player/{player_id}/landing"
     async with session.get(url) as resp:
         if resp.status != 200:
             print(f"Failed to fetch stats for player {player_id}: {resp.status}")
