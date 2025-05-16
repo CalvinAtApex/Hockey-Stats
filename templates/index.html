@@ -1,21 +1,23 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-    <meta charset="UTF-8">
-    <title>NHL Teams & Rosters</title>
+    <title>NHL Team Roster</title>
 </head>
 <body>
     <h1>Select a Team</h1>
-    <select id="teamSelect">
+    <select id="team-select">
         <option value="">-- Select a Team --</option>
+        {% for team in teams %}
+            <option value="{{ team.abbrev }}">{{ team.name }}</option>
+        {% endfor %}
     </select>
 
     <h2>Roster</h2>
-    <table id="rosterTable" border="1">
+    <table border="1" id="roster-table">
         <thead>
             <tr>
-                <th>Number</th>
                 <th>Name</th>
+                <th>Number</th>
                 <th>Position</th>
                 <th>Goals</th>
                 <th>Assists</th>
@@ -25,46 +27,36 @@
     </table>
 
     <script>
-        async function loadTeams() {
-            const response = await fetch('/teams');
-            const data = await response.json();
-            const select = document.getElementById('teamSelect');
-
-            data.teams.forEach(team => {
-                const option = document.createElement('option');
-                option.value = team.abbrev;
-                option.textContent = team.name;
-                select.appendChild(option);
-            });
-        }
-
-        async function loadRoster(teamAbbrev) {
-            const response = await fetch(`/roster/${teamAbbrev}`);
-            const data = await response.json();
-
-            const tbody = document.querySelector('#rosterTable tbody');
+        document.getElementById('team-select').addEventListener('change', async function() {
+            const teamAbbrev = this.value;
+            const tbody = document.querySelector('#roster-table tbody');
             tbody.innerHTML = '';
 
-            data.players.forEach(player => {
-                const row = document.createElement('tr');
-                row.innerHTML = `
-                    <td>${player.number}</td>
-                    <td>${player.name}</td>
-                    <td>${player.position}</td>
-                    <td>${player.goals}</td>
-                    <td>${player.assists}</td>
-                `;
-                tbody.appendChild(row);
-            });
-        }
+            if (teamAbbrev) {
+                try {
+                    const response = await fetch(`/roster/${teamAbbrev}`);
+                    const data = await response.json();
 
-        document.getElementById('teamSelect').addEventListener('change', function() {
-            if (this.value) {
-                loadRoster(this.value);
+                    if (data.length === 0) {
+                        tbody.innerHTML = '<tr><td colspan="5">No roster data found.</td></tr>';
+                    } else {
+                        data.forEach(player => {
+                            const row = `
+                                <tr>
+                                    <td>${player.name}</td>
+                                    <td>${player.number}</td>
+                                    <td>${player.position}</td>
+                                    <td>${player.goals}</td>
+                                    <td>${player.assists}</td>
+                                </tr>`;
+                            tbody.innerHTML += row;
+                        });
+                    }
+                } catch (err) {
+                    tbody.innerHTML = '<tr><td colspan="5">Error loading roster.</td></tr>';
+                }
             }
         });
-
-        loadTeams();
     </script>
 </body>
 </html>
