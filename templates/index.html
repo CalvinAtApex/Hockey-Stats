@@ -29,7 +29,7 @@
   <!-- Spinner Overlay -->
   <div id="spinner-overlay">
     <div class="spinner-border" role="status">
-      <span class="visually-hidden">Loading...</span>
+      <span class="visually-hidden">Loading…</span>
     </div>
   </div>
 
@@ -51,16 +51,14 @@
 
       <div class="collapse navbar-collapse" id="navbarDivisions">
         <ul class="navbar-nav me-auto mb-2 mb-lg-0" id="division-nav">
-          <!-- Division dropdowns will be injected here -->
+          <!-- Division dropdowns injected here -->
         </ul>
       </div>
     </div>
   </nav>
 
-  <!-- Main Content Area -->
-  <div class="container mt-4" id="content">
-    <!-- Roster table / player stats will be injected here -->
-  </div>
+  <!-- Main Content: Roster + stats -->
+  <div class="container mt-4" id="content"></div>
 
   <script
     src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
@@ -68,7 +66,7 @@
     crossorigin="anonymous"
   ></script>
   <script>
-    // Fetch and render division dropdowns
+    // 1) Load divisions & teams
     async function loadTeams() {
       const res = await fetch('/teams');
       const divisions = await res.json();
@@ -85,9 +83,7 @@
             role="button"
             data-bs-toggle="dropdown"
             aria-expanded="false"
-          >
-            ${div}
-          </a>
+          >${div}</a>
           <ul class="dropdown-menu" aria-labelledby="nav-${div}">
             ${teams.map(team => `
               <li>
@@ -96,7 +92,7 @@
                   href="#"
                   onclick="loadRoster('${team.abbr}')"
                 >
-                  <img src="${team.logo}" width="20" class="me-2" />
+                  <img src="${team.logo}" width="20" class="me-2"/>
                   ${team.name}
                 </a>
               </li>
@@ -107,19 +103,24 @@
       });
     }
 
-    // Fetch and render a team's roster in a table
+    // 2) Load a team's roster + render compact table with stats
     async function loadRoster(abbrev) {
       document.getElementById('content').innerHTML = '';
       const res = await fetch(`/roster/${abbrev}`);
       const players = await res.json();
+
       const table = document.createElement('table');
-      table.className = 'table table-striped';
+      table.className = 'table table-sm table-striped';
       table.innerHTML = `
         <thead>
           <tr>
-            <th scope="col">#</th>
-            <th scope="col">Player</th>
-            <th scope="col">Pos</th>
+            <th>#</th>
+            <th>Player</th>
+            <th>Pos</th>
+            <th>GP</th>
+            <th>G</th>
+            <th>A</th>
+            <th>P</th>
           </tr>
         </thead>
         <tbody>
@@ -127,18 +128,23 @@
             <tr>
               <td>${p.number || ''}</td>
               <td class="d-flex align-items-center">
-                <img src="${p.headshot}" width="30" class="me-2" />
+                <img src="${p.headshot}" width="24" class="me-2 rounded-circle"/>
                 ${p.name}
               </td>
               <td>${p.pos}</td>
+              <td>${p.gp}</td>
+              <td>${p.g}</td>
+              <td>${p.a}</td>
+              <td>${p.p}</td>
             </tr>
           `).join('')}
         </tbody>
       `;
+
       document.getElementById('content').appendChild(table);
     }
 
-    // On page load: fetch teams, then hide spinner
+    // On load: get teams, then hide spinner
     window.addEventListener('DOMContentLoaded', async () => {
       await loadTeams();
       document.getElementById('spinner-overlay').style.display = 'none';
