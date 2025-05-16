@@ -1,77 +1,83 @@
 from flask import Flask, jsonify, render_template
-import aiohttp
+import requests
 import asyncio
+import aiohttp
 from datetime import datetime
 
 app = Flask(__name__)
 
-BASE_URL = "https://api-web.nhle.com/v1"
+NHLE_BASE_URL = "https://api-web.nhle.com/v1"
+
+def get_current_season():
+    now = datetime.now()
+    year = now.year if now.month >= 9 else now.year - 1
+    return f"{year}{year+1}"
 
 @app.route("/")
 def index():
     return render_template("index.html")
 
 @app.route("/teams")
-async def get_teams():
-    url = f"{BASE_URL}/standings/now"
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as resp:
-            data = await resp.json()
+def get_teams():
+    url = f"{NHLE_BASE_URL}/standings/now"
+    resp = requests.get(url)
+    resp.raise_for_status()
+    data = resp.json()
 
     teams = []
     for record in data.get("standings", []):
-        team_data = record.get("team", {})
+        team = record.get("team", {})
         teams.append({
-            "id": team_data.get("id"),
-            "abbrev": team_data.get("abbrev"),
-            "name": team_data.get("fullName", {}).get("default", team_data.get("commonName", {}).get("default", team_data.get("abbrev")))
+            "id": team.get("id"),
+            "teamAbbrev": team.get("abbrev"),
+            "teamName": team.get("name", {}),
+            "fullTeamName": team.get("fullName", {})
         })
 
     return jsonify(teams)
 
 @app.route("/roster/<team_abbrev>")
 async def get_roster(team_abbrev):
-    current_year = datetime.now().year
-    season_id = f"{current_year}{current_year + 1}"
-
-    url = f"{BASE_URL}/roster/{team_abbrev}/{season_id}"
+    season = get_current_season()
+    url = f"{NHLE_BASE_URL}/roster/{team_abbrev}/{season}"
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as resp:
             if resp.status != 200:
-                print(f"Roster fetch failed for {team_abbrev}: {resp.status}")
-                return jsonify({"error": "Failed to fetch roster"}), 500
+                return jsonify({"error": f"Failed to fetch roster for {team_abbrev}"}), 500
             roster_data = await resp.json()
 
         players = []
-        for group in ['forwards', 'defensemen', 'goalies']:
-            for player in roster_data.get(group, []):
-                goals, assists = await get_player_stats(session, player['id'])
+        for category in ["forwards", "defensemen", "goalies"]:
+            for player in roster_data.get(category, []):
+                goals, assists = await get_player_stats(session, player["id"], season)
                 players.append({
-                    'name': f"{player['firstName']['default']} {player['lastName']['default']}",
-                    'number': player.get('sweaterNumber', ''),
-                    'position': player.get('positionCode', ''),
-                    'goals': goals,
-                    'assists': assists
+                    "number": player.get("sweaterNumber", ""),
+                    "name": f"{player['firstName']['default']} {player['lastName']['default']}",
+                    "position": player.get("positionCode", ""),
+                    "goals": goals,
+                    "assists": assists
                 })
-
-    if not players:
-        return jsonify({"error": "No roster data found."}), 404
 
     return jsonify(players)
 
-async def get_player_stats(session, player_id):
-    url = f"{BASE_URL}/player/{player_id}/landing"
+async def get_player_stats(session, player_id, season):
+    url = f"{NHLE_BASE_URL}/player/{player_id}/landing"
     async with session.get(url) as resp:
         if resp.status != 200:
-            print(f"Failed to fetch stats for player {player_id}: {resp.status}")
             return 0, 0
-
         data = await resp.json()
-        stats = data.get("featuredStats", {}).get("regularSeason", {}).get("subSeason", {})
-        goals = stats.get("goals", 0)
-        assists = stats.get("assists", 0)
 
-        return goals, assists
+    featured = data.get("featuredStats", {})
+    regular = featured.get("regularSeason", {}).get("subSeason", {})
+    stats_season = featured.get("season")
+
+    if stats_season != int(season):
+        return 0, 0
+
+    goals = regular.get("goals", 0)
+    assists = regular.get("assists", 0)
+
+    return goals, assists
 
 if __name__ == "__main__":
     app.run(debug=True)
