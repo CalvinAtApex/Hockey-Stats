@@ -5,11 +5,9 @@
     <title>NHL Team Roster</title>
     <style>
         body { font-family: Arial, sans-serif; margin: 20px; }
-        .team-logo { width: 50px; vertical-align: middle; margin-right: 10px; }
-        .player-card { display: flex; align-items: center; margin: 10px 0; border: 1px solid #ccc; padding: 10px; border-radius: 5px; }
-        .player-card img { width: 60px; height: 60px; margin-right: 15px; border-radius: 5px; }
-        .player-info { display: flex; flex-direction: column; }
-        .player-info span { margin: 2px 0; }
+        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
+        th, td { padding: 10px; border: 1px solid #ccc; text-align: left; }
+        th { background-color: #f4f4f4; }
     </style>
 </head>
 <body>
@@ -20,19 +18,35 @@
 <select id="teamSelect">
     <option value="">-- Select Team --</option>
     {% for team in teams %}
-        <option value="{{ team.abbreviation }}">
-            {{ team.name }}
-        </option>
+        <option value="{{ team.abbreviation }}">{{ team.name }}</option>
     {% endfor %}
 </select>
 
-<div id="roster"></div>
+<table id="rosterTable" style="display:none;">
+    <thead>
+        <tr>
+            <th>#</th>
+            <th>Player Name</th>
+            <th>Position</th>
+            <th>Goals</th>
+            <th>Assists</th>
+        </tr>
+    </thead>
+    <tbody id="rosterBody"></tbody>
+</table>
+
+<div id="message"></div>
 
 <script>
     document.getElementById('teamSelect').addEventListener('change', function() {
         const teamAbbrev = this.value;
-        const rosterDiv = document.getElementById('roster');
-        rosterDiv.innerHTML = '';
+        const rosterTable = document.getElementById('rosterTable');
+        const rosterBody = document.getElementById('rosterBody');
+        const messageDiv = document.getElementById('message');
+
+        rosterBody.innerHTML = '';
+        messageDiv.innerHTML = '';
+        rosterTable.style.display = 'none';
 
         if (!teamAbbrev) return;
 
@@ -40,30 +54,27 @@
             .then(response => response.json())
             .then(data => {
                 if (!data.players || data.players.length === 0) {
-                    rosterDiv.innerHTML = '<p>No roster data found.</p>';
+                    messageDiv.innerHTML = '<p>No roster data found.</p>';
                     return;
                 }
 
                 data.players.forEach(player => {
-                    const card = document.createElement('div');
-                    card.className = 'player-card';
-
-                    card.innerHTML = `
-                        <img src="${player.headshot}" alt="${player.name}">
-                        <div class="player-info">
-                            <span><strong>#${player.number} ${player.name}</strong></span>
-                            <span>Position: ${player.position}</span>
-                            <span>Height: ${player.heightInches} in | Weight: ${player.weightPounds} lbs</span>
-                            <span>Shoots/Catches: ${player.shootsCatches}</span>
-                            <span>Born: ${player.birthDate} in ${player.birthCity}, ${player.birthCountry}</span>
-                        </div>
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${player.number}</td>
+                        <td>${player.name}</td>
+                        <td>${player.position}</td>
+                        <td>${player.goals}</td>
+                        <td>${player.assists}</td>
                     `;
-                    rosterDiv.appendChild(card);
+                    rosterBody.appendChild(row);
                 });
+
+                rosterTable.style.display = 'table';
             })
             .catch(err => {
                 console.error(err);
-                rosterDiv.innerHTML = '<p>Error loading roster.</p>';
+                messageDiv.innerHTML = '<p>Error loading roster.</p>';
             });
     });
 </script>
