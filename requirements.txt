@@ -3,5 +3,4 @@ aiohttp
 gunicorn
 requests
 Flask-Login
-Flask-User
 Flask-Security-Too
