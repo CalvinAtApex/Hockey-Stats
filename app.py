@@ -11,12 +11,14 @@ def get_teams():
         teams = []
         for record in data:
             teams.append({
-                'id': record['id'],                         # <-- Numerical ID
+                'id': record['id'],
                 'name': record['fullName'],
                 'abbreviation': record['abbrev'],
-                'logo': f"https://assets.nhle.com/logos/nhl/svg/{record['abbrev']}_light.svg"
+                'logo': record.get('teamLogo')  # optional, but nice
             })
         return teams
+    else:
+        print(f"Failed to fetch teams: {response.status_code} - {response.text}")
     return []
 
 def get_team_players(team_id):
