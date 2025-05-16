@@ -1,4 +1,4 @@
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, render_template, send_from_directory
 import requests
 import os
 
@@ -6,57 +6,46 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    dir_path = os.path.dirname(os.path.realpath(__file__))
-    return send_from_directory(directory=dir_path, path='index.html')
+    return render_template('index.html')
 
 @app.route('/teams')
-def get_teams():
+def teams():
     standings_url = 'https://api-web.nhle.com/v1/standings/now'
     response = requests.get(standings_url)
-    data = response.json()
+    if response.status_code != 200:
+        return jsonify({'error': 'Failed to fetch standings'}), 500
+
+    standings_data = response.json()
     teams = []
-    for team in data['standings']:
-        teams.append({
-            'abbreviation': team['teamAbbrev']['default'],
-            'name': team['teamName']['default'],
-            'logo': team['teamLogo']
-        })
+    for team_data in standings_data['standings']:
+        team_info = {
+            'abbrev': team_data['teamAbbrev']['default'],
+            'name': team_data['teamName']['default'],
+            'logo': team_data['teamLogo']
+        }
+        teams.append(team_info)
+
     return jsonify(teams)
 
-@app.route('/roster/<team_abbr>')
-def get_roster(team_abbr):
-    roster_url = f'https://api-web.nhle.com/v1/roster/{team_abbr}/current'
+@app.route('/roster/<team_abbrev>')
+def roster(team_abbrev):
+    roster_url = f'https://api-web.nhle.com/v1/roster/{team_abbrev}/current'
     response = requests.get(roster_url)
     if response.status_code != 200:
-        return jsonify({'error': 'Failed to fetch roster'}), 500
-    data = response.json()
-    roster = data.get('forwards', []) + data.get('defensemen', []) + data.get('goalies', [])
+        return jsonify({'error': f'Failed to fetch roster for {team_abbrev}'}), 500
+
+    roster_data = response.json()
     players = []
-    for player in roster:
+    for player in roster_data['forwards'] + roster_data['defensemen'] + roster_data['goalies']:
         players.append({
-            'id': player['id'],
-            'name': f"{player['firstName']['default']} {player['lastName']['default']}",
+            'name': player['firstName']['default'] + ' ' + player['lastName']['default'],
             'position': player['position'],
-            'sweaterNumber': player.get('sweaterNumber', '')
+            'sweaterNumber': player.get('sweaterNumber', ''),
+            'goals': player.get('stats', {}).get('goals', 0),
+            'assists': player.get('stats', {}).get('assists', 0)
         })
+
     return jsonify(players)
 
-@app.route('/player/<int:player_id>')
-def get_player_stats(player_id):
-    player_url = f'https://api-web.nhle.com/v1/player/{player_id}/landing'
-    response = requests.get(player_url)
-    if response.status_code != 200:
-        return jsonify({'error': 'Failed to fetch player stats'}), 500
-    data = response.json()
-    stats = data.get('featuredStats', {}).get('regularSeason', {}).get('subSeason', {})
-    player_info = {
-        'gamesPlayed': stats.get('gamesPlayed', 0),
-        'goals': stats.get('goals', 0),
-        'assists': stats.get('assists', 0),
-        'points': stats.get('points', 0)
-    }
-    return jsonify(player_info)
-
 if __name__ == '__main__':
-    port = int(os.environ.get('PORT', 5000))
-    app.run(host='0.0.0.0', port=port)
+    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)))
