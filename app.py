@@ -1,56 +1,72 @@
+from flask import Flask, render_template, redirect, url_for, request, flash
+from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
+from werkzeug.security import check_password_hash, generate_password_hash
 import requests
-from flask import Flask, render_template, jsonify
 
-app = Flask(__name__, template_folder='templates')
+app = Flask(__name__)
+app.secret_key = 'your-secret-key'  # replace with a secure random key
+
+# --- Flask-Login setup ---
+login_manager = LoginManager()
+login_manager.login_view = 'login'
+login_manager.init_app(app)
+
+# Simple in-memory user store; replace with DB in production
+users = {
+    'admin': generate_password_hash('password123')
+}
+
+class User(UserMixin):
+    def __init__(self, username):
+        self.id = username
+
+@login_manager.user_loader
+def load_user(user_id):
+    if user_id in users:
+        return User(user_id)
+    return None
+
+# --- Authentication routes ---
+@app.route('/login', methods=['GET', 'POST'])
+def login():
+    if request.method == 'POST':
+        username = request.form.get('username')
+        password = request.form.get('password')
+        pw_hash = users.get(username)
+        if pw_hash and check_password_hash(pw_hash, password):
+            user = User(username)
+            login_user(user)
+            return redirect(request.args.get('next') or url_for('index'))
+        flash('Invalid credentials', 'danger')
+    return render_template('login.html')
+
+@app.route('/logout')
+@login_required
+def logout():
+    logout_user()
+    return redirect(url_for('login'))
+
+# --- NHL API integration routes ---
 
 @app.route('/')
+@login_required
 def index():
     return render_template('index.html')
 
 @app.route('/teams')
+@login_required
 def teams():
-    resp = requests.get('https://api-web.nhle.com/v1/standings/now').json()
-    divisions = {}
-    for t in resp['standings']:
-        div_name = t['divisionName']
-        divisions.setdefault(div_name, []).append({
-            'abbr': t['teamAbbrev']['default'],
-            'name': t['teamCommonName']['default'],
-            'logo': t['teamLogo']
-        })
-    return jsonify(divisions)
+    resp = requests.get('https://api-web.nhle.com/v1/standings/regularSeason')
+    data = resp.json()
+    # process and render as before
+    return render_template('teams.html', standings=data['standings'])
 
-@app.route('/roster/<team>')
-def roster(team):
-    r = requests.get(f'https://api-web.nhle.com/v1/roster/{team}/current').json()
-    players = r.get('forwards', []) + r.get('defensemen', []) + r.get('goalies', [])
-
-    output = []
-    for p in players:
-        pid = p['id']
-        land = requests.get(f'https://api-web.nhle.com/v1/player/{pid}/landing').json()
-        rs = land.get('featuredStats', {}) \
-                 .get('regularSeason', {}) \
-                 .get('subSeason', {})
-        po = land.get('featuredStats', {}) \
-                 .get('playoffs', {}) \
-                 .get('subSeason', {})
-
-        output.append({
-            'number': p.get('sweaterNumber'),
-            'name': f"{p['firstName']['default']} {p['lastName']['default']}",
-            'headshot': p.get('headshot'),
-            'pos': p.get('positionCode'),
-            'gp': rs.get('gamesPlayed', 0),
-            'g':  rs.get('goals', 0),
-            'a':  rs.get('assists', 0),
-            'p':  rs.get('points', 0),
-            'playoffGoals':   po.get('goals', 0),
-            'playoffAssists': po.get('assists', 0),
-            'playoffPoints':  po.get('points', 0),
-        })
-
-    return jsonify(output)
+@app.route('/roster/<team_abbrev>')
+@login_required
+def roster(team_abbrev):
+    resp = requests.get(f'https://api-web.nhle.com/v1/roster/{team_abbrev}/current')
+    data = resp.json()
+    return render_template('roster.html', roster=data)
 
 if __name__ == '__main__':
     app.run(debug=True)
