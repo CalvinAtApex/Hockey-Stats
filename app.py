@@ -23,12 +23,15 @@ def get_teams():
 
 
 
-def get_team_players(team_id):
-    url = f"https://statsapi.web.nhl.com/api/v1/teams/{team_id}/roster"
+def get_team_roster(abbrev):
+    team_id = get_team_id(abbrev)
+    if not team_id:
+        return []
+    url = f"https://api-web.nhle.com/v1/roster/{team_id}/current"
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
-        return data.get('roster', [])
+        return data['forwards'] + data['defensemen'] + data['goalies']
     return []
 
 @app.route("/", methods=["GET", "POST"])
