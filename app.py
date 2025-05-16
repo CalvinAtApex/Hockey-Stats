@@ -11,15 +11,16 @@ def get_teams():
         teams = []
         for record in data['standings']:
             teams.append({
-                'uuid': record['teamUuid'],
-                'abbreviation': record['teamAbbrev'],
+                'id': record['teamId'],            
                 'name': record['teamName'],
+                'abbreviation': record['teamAbbrev'],
                 'logo': record['teamLogo']
             })
         return teams
     else:
         print(f"Failed to fetch teams: {response.status_code} - {response.text}")
     return []
+
 
 def get_team_players(team_id):
     url = f"https://statsapi.web.nhl.com/api/v1/teams/{team_id}/roster"
