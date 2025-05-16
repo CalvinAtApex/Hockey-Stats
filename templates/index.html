@@ -1,128 +1,49 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Hockey Stats</title>
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-    rel="stylesheet"
-  >
-  <style>
-    #spinner-overlay {
-      position: fixed; top: 0; left: 0;
-      width: 100%; height: 100%;
-      background: rgba(255,255,255,0.8);
-      display: flex; align-items: center; justify-content: center;
-      z-index: 9999;
-    }
-  </style>
-</head>
-<body>
-
-  <div id="spinner-overlay">
-    <div class="spinner-border" role="status">
-      <span class="visually-hidden">Loading…</span>
-    </div>
-  </div>
-
-  <nav class="navbar navbar-expand-lg navbar-light bg-light">
-    <div class="container-fluid">
-      <a class="navbar-brand" href="#">Hockey Stats</a>
-      <button
-        class="navbar-toggler"
-        type="button"
-        data-bs-toggle="collapse"
-        data-bs-target="#navbarDivisions"
-      >
-        <span class="navbar-toggler-icon"></span>
-      </button>
-
-      <div class="collapse navbar-collapse" id="navbarDivisions">
-        <ul class="navbar-nav me-auto mb-2 mb-lg-0" id="division-nav"></ul>
-      </div>
-    </div>
-  </nav>
-
-  <div class="container mt-4" id="content"></div>
-
-  <script
-    src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
-  ></script>
-  <script>
-    async function loadTeams() {
-      const res = await fetch('/teams');
-      const divisions = await res.json();
-      const nav = document.getElementById('division-nav');
-
-      Object.entries(divisions).forEach(([div, teams]) => {
-        const li = document.createElement('li');
-        li.className = 'nav-item dropdown';
-        li.innerHTML = `
-          <a class="nav-link dropdown-toggle"
-             href="#" id="nav-${div}"
-             data-bs-toggle="dropdown"
-          >${div}</a>
-          <ul class="dropdown-menu" aria-labelledby="nav-${div}">
-            ${teams.map(team => `
-              <li>
-                <a class="dropdown-item d-flex align-items-center"
-                   href="#"
-                   onclick="loadRoster('${team.abbr}')"
-                >
-                  <img src="${team.logo}" width="20" class="me-2"/>
-                  ${team.name}
-                </a>
-              </li>
-            `).join('')}
+  <head>
+    <meta charset="utf-8">
+    <title>Hockey Stats</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <!-- Bootstrap CSS -->
+    <link 
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" 
+      rel="stylesheet"
+    >
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-lg navbar-light bg-light shadow-sm">
+      <div class="container-fluid">
+        <a class="navbar-brand" href="{{ url_for('index') }}">Hockey Stats</a>
+        <button 
+          class="navbar-toggler" 
+          type="button" 
+          data-bs-toggle="collapse" 
+          data-bs-target="#navbarsExample" 
+          aria-controls="navbarsExample" 
+          aria-expanded="false" 
+          aria-label="Toggle navigation">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarsExample">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+            </li>
           </ul>
-        `;
-        nav.appendChild(li);
-      });
-    }
+        </div>
+      </div>
+    </nav>
 
-    async function loadRoster(abbrev) {
-      document.getElementById('content').innerHTML = '';
-      const res = await fetch(`/roster/${abbrev}`);
-      const players = await res.json();
+    <div class="container my-4">
+      <h1>Welcome, {{ current_user.id }}!</h1>
+      <p class="lead">Use the menu to view teams and rosters.</p>
+      <!-- You can link to your teams page here: -->
+      <a href="{{ url_for('teams') }}" class="btn btn-primary">View Standings & Teams</a>
+    </div>
 
-      const table = document.createElement('table');
-      table.className = 'table table-sm table-striped';
-      table.innerHTML = `
-        <thead>
-          <tr>
-            <th>#</th><th>Player</th><th>Pos</th>
-            <th>GP</th><th>G</th><th>A</th><th>P</th>
-            <th>Playoff G</th><th>Playoff A</th><th>Playoff P</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${players.map(p => `
-            <tr>
-              <td>${p.number||''}</td>
-              <td class="d-flex align-items-center">
-                <img src="${p.headshot}" width="24" class="me-2 rounded-circle"/>
-                ${p.name}
-              </td>
-              <td>${p.pos}</td>
-              <td>${p.gp}</td>
-              <td>${p.g}</td>
-              <td>${p.a}</td>
-              <td>${p.p}</td>
-              <td>${p.playoffGoals}</td>
-              <td>${p.playoffAssists}</td>
-              <td>${p.playoffPoints}</td>
-            </tr>
-          `).join('')}
-        </tbody>
-      `;
-      document.getElementById('content').appendChild(table);
-    }
-
-    window.addEventListener('DOMContentLoaded', async () => {
-      await loadTeams();
-      document.getElementById('spinner-overlay').style.display = 'none';
-    });
-  </script>
-</body>
+    <!-- Bootstrap JS -->
+    <script 
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
+    </script>
+  </body>
 </html>
