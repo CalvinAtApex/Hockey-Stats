@@ -2,62 +2,69 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>NHL Team Roster</title>
+    <title>NHL Teams & Rosters</title>
 </head>
 <body>
     <h1>Select a Team</h1>
     <select id="teamSelect">
         <option value="">-- Select a Team --</option>
-        {% for team in teams %}
-            <option value="{{ team.abbrev }}">{{ team.name }}</option>
-        {% endfor %}
     </select>
 
     <h2>Roster</h2>
-    <div id="rosterContainer">Select a team to view roster.</div>
+    <table id="rosterTable" border="1">
+        <thead>
+            <tr>
+                <th>Number</th>
+                <th>Name</th>
+                <th>Position</th>
+                <th>Goals</th>
+                <th>Assists</th>
+            </tr>
+        </thead>
+        <tbody></tbody>
+    </table>
 
     <script>
-        document.getElementById('teamSelect').addEventListener('change', function() {
-            const team = this.value;
-            const container = document.getElementById('rosterContainer');
-            container.innerHTML = 'Loading roster...';
+        async function loadTeams() {
+            const response = await fetch('/teams');
+            const data = await response.json();
+            const select = document.getElementById('teamSelect');
 
-            if (team) {
-                fetch(`/roster/${team}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.error) {
-                            container.innerHTML = data.error;
-                        } else {
-                            let table = `<table border="1">
-                                            <tr>
-                                                <th>#</th>
-                                                <th>Name</th>
-                                                <th>Position</th>
-                                                <th>Goals</th>
-                                                <th>Assists</th>
-                                            </tr>`;
-                            data.forEach(player => {
-                                table += `<tr>
-                                            <td>${player.number}</td>
-                                            <td>${player.name}</td>
-                                            <td>${player.position}</td>
-                                            <td>${player.goals}</td>
-                                            <td>${player.assists}</td>
-                                        </tr>`;
-                            });
-                            table += '</table>';
-                            container.innerHTML = table;
-                        }
-                    })
-                    .catch(err => {
-                        console.error(err);
-                        container.innerHTML = 'Error loading roster.';
-                    });
-            } else {
-                container.innerHTML = 'Select a team to view roster.';
+            data.teams.forEach(team => {
+                const option = document.createElement('option');
+                option.value = team.abbrev;
+                option.textContent = team.name;
+                select.appendChild(option);
+            });
+        }
+
+        async function loadRoster(teamAbbrev) {
+            const response = await fetch(`/roster/${teamAbbrev}`);
+            const data = await response.json();
+
+            const tbody = document.querySelector('#rosterTable tbody');
+            tbody.innerHTML = '';
+
+            data.players.forEach(player => {
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${player.number}</td>
+                    <td>${player.name}</td>
+                    <td>${player.position}</td>
+                    <td>${player.goals}</td>
+                    <td>${player.assists}</td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        document.getElementById('teamSelect').addEventListener('change', function() {
+            if (this.value) {
+                loadRoster(this.value);
             }
         });
+
+        loadTeams();
     </script>
 </body>
 </html>
