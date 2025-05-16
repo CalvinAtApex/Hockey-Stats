@@ -3,55 +3,60 @@ import requests
 
 app = Flask(__name__)
 
-# NHL Standings API
-STANDINGS_URL = 'https://api-web.nhle.com/v1/standings/now'
-# NHL Roster API Template
-ROSTER_URL_TEMPLATE = 'https://api-web.nhle.com/v1/roster/{team_abbrev}/20242025'
+def get_teams():
+    url = "https://api-web.nhle.com/v1/standings/now"
+    response = requests.get(url)
+    data = response.json()
+
+    teams = []
+    for record in data.get('standings', []):
+        team = {
+            'name': record['teamName']['default'],
+            'abbreviation': record['teamAbbrev']['default']
+        }
+        teams.append(team)
+
+    return teams
 
 @app.route('/')
 def index():
-    response = requests.get(STANDINGS_URL)
-    if response.status_code != 200:
-        return "Failed to load standings", 500
-
-    data = response.json()
-    teams = []
-
-    for record in data.get('standings', []):
-        teams.append({
-            'name': record['teamName']['default'],
-            'abbreviation': record['teamAbbrev']['default'],
-            'logo': record['teamLogo']
-        })
-
+    teams = get_teams()
     return render_template('index.html', teams=teams)
 
 @app.route('/roster/<team_abbrev>')
 def get_roster(team_abbrev):
-    url = ROSTER_URL_TEMPLATE.format(team_abbrev=team_abbrev.upper())
-    response = requests.get(url)
+    roster_url = f"https://api-web.nhle.com/v1/roster/{team_abbrev}/20242025"
+    stats_url = f"https://api-web.nhle.com/v1/club-stats-season/{team_abbrev}/20242025"
 
-    if response.status_code != 200:
-        print(f"Error fetching roster for {team_abbrev}: {response.status_code} - {response.text}")
-        return jsonify({'players': []})  # Return empty list, not 500 error
+    roster_response = requests.get(roster_url)
+    stats_response = requests.get(stats_url)
 
-    data = response.json()
+    if roster_response.status_code != 200 or stats_response.status_code != 200:
+        return jsonify({'players': []})
+
+    roster_data = roster_response.json()
+    stats_data = stats_response.json()
+
+    stats_lookup = {}
+    for player in stats_data.get('skaters', []) + stats_data.get('goalies', []):
+        stats_lookup[player['playerId']] = {
+            'goals': player.get('goals', 0),
+            'assists': player.get('assists', 0)
+        }
+
     players = []
 
     for category in ['forwards', 'defensemen', 'goalies']:
-        for player in data.get(category, []):
+        for player in roster_data.get(category, []):
+            player_id = player['id']
+            player_stats = stats_lookup.get(player_id, {'goals': 0, 'assists': 0})
+
             players.append({
-                'id': player.get('id'),
-                'name': f"{player.get('firstName', {}).get('default', '')} {player.get('lastName', {}).get('default', '')}",
-                'position': player.get('positionCode', 'N/A'),
+                'name': f"{player['firstName']['default']} {player['lastName']['default']}",
                 'number': player.get('sweaterNumber', 'N/A'),
-                'headshot': player.get('headshot', ''),
-                'shootsCatches': player.get('shootsCatches', 'N/A'),
-                'heightInches': player.get('heightInInches', 'N/A'),
-                'weightPounds': player.get('weightInPounds', 'N/A'),
-                'birthDate': player.get('birthDate', 'N/A'),
-                'birthCity': player.get('birthCity', {}).get('default', ''),
-                'birthCountry': player.get('birthCountry', 'N/A')
+                'position': player.get('positionCode', 'N/A'),
+                'goals': player_stats['goals'],
+                'assists': player_stats['assists']
             })
 
     return jsonify({'players': players})
