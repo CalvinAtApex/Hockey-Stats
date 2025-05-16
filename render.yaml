@@ -7,4 +7,4 @@ services:
     startCommand: gunicorn app:app
     envVars:
       - key: SPORTSRADAR_API_KEY
-        value: your_sportsradar_api_key_here
+        value: a8dfa20cd478b6f05f53dc0eb2c52551
