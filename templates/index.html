@@ -28,14 +28,23 @@
         async function loadTeams() {
             const response = await fetch("/teams");
             const data = await response.json();
+            console.log("Teams fetched:", data);
 
             const select = document.getElementById("teamSelect");
             select.innerHTML = `<option value="">Select a team</option>`;
 
             data.forEach(team => {
+                const abbrev = team.abbrev || team.teamAbbrev || "";
+                const name = team.name || team.fullName || team.commonName || abbrev;
+
+                if (!abbrev || !name) {
+                    console.warn("Skipping team with missing data", team);
+                    return;
+                }
+
                 const option = document.createElement("option");
-                option.value = team.abbrev;
-                option.textContent = team.name;
+                option.value = abbrev;
+                option.textContent = name;
                 select.appendChild(option);
             });
         }
