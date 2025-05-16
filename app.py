@@ -3,9 +3,10 @@ import requests
 
 app = Flask(__name__)
 
-def get_teams():
-    url = "https://api-web.nhle.com/v1/standings/now"
-    response = requests.get(url)
+@app.route('/')
+def index():
+    standings_url = 'https://api-web.nhle.com/v1/standings/now'
+    response = requests.get(standings_url)
     data = response.json()
 
     teams = []
@@ -15,32 +16,24 @@ def get_teams():
             'abbreviation': record['teamAbbrev']['default']
         })
 
-    return teams
-
-@app.route('/')
-def index():
-    teams = get_teams()
     return render_template('index.html', teams=teams)
 
 @app.route('/roster/<team_abbrev>')
 def get_roster(team_abbrev):
-    roster_url = f"https://api-web.nhle.com/v1/roster/{team_abbrev}/20242025"
+    roster_url = f'https://api-web.nhle.com/v1/roster/{team_abbrev}/20242025'
+    response = requests.get(roster_url)
+    data = response.json()
 
-    roster_response = requests.get(roster_url)
-    if roster_response.status_code != 200:
-        return jsonify({'players': []})
-
-    roster_data = roster_response.json()
     players = []
-
     for category in ['forwards', 'defensemen', 'goalies']:
-        for player in roster_data.get(category, []):
+        for player in data.get(category, []):
             players.append({
+                'id': player['id'],
                 'name': f"{player['firstName']['default']} {player['lastName']['default']}",
                 'number': player.get('sweaterNumber', 'N/A'),
                 'position': player.get('positionCode', 'N/A'),
-                'goals': 0,   # Placeholder (no bulk stats endpoint works reliably)
-                'assists': 0  # Placeholder
+                'goals': 0,
+                'assists': 0
             })
 
     return jsonify({'players': players})

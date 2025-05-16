@@ -56,22 +56,21 @@
                             <td>${player.number}</td>
                             <td>${player.name}</td>
                             <td>${player.position}</td>
-                            <td id="goals-${player.number}">Loading...</td>
-                            <td id="assists-${player.number}">Loading...</td>
+                            <td id="goals-${player.id}">Loading...</td>
+                            <td id="assists-${player.id}">Loading...</td>
                         `;
                         tbody.appendChild(row);
 
-                        // Async fetch stats per player
-                        fetch(`https://api-web.nhle.com/v1/player/${player.number}/summary`)
+                        fetch(`https://api-web.nhle.com/v1/player/${player.id}/summary`)
                             .then(resp => resp.json())
                             .then(playerData => {
                                 const stats = playerData?.careerTotals?.regularSeason || {};
-                                document.getElementById(`goals-${player.number}`).innerText = stats.goals ?? '0';
-                                document.getElementById(`assists-${player.number}`).innerText = stats.assists ?? '0';
+                                document.getElementById(`goals-${player.id}`).innerText = stats.goals ?? '0';
+                                document.getElementById(`assists-${player.id}`).innerText = stats.assists ?? '0';
                             })
                             .catch(err => {
-                                document.getElementById(`goals-${player.number}`).innerText = '0';
-                                document.getElementById(`assists-${player.number}`).innerText = '0';
+                                document.getElementById(`goals-${player.id}`).innerText = '0';
+                                document.getElementById(`assists-${player.id}`).innerText = '0';
                             });
                     });
                 })
