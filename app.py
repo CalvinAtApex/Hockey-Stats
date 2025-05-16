@@ -1,11 +1,11 @@
-from flask import Flask, jsonify, send_from_directory
+from flask import Flask, jsonify, render_template, send_from_directory
 import requests
 
-app = Flask(__name__)
+app = Flask(__name__, static_folder='static', template_folder='.')
 
 @app.route('/')
-def serve_index():
-    return send_from_directory('.', 'index.html')
+def index():
+    return render_template('index.html')
 
 @app.route('/teams')
 def get_teams():
@@ -14,12 +14,11 @@ def get_teams():
     data = response.json()
     teams = []
     for team in data['standings']:
-        team_info = {
+        teams.append({
             'abbreviation': team['teamAbbrev']['default'],
             'name': team['teamName']['default'],
             'logo': team['teamLogo']
-        }
-        teams.append(team_info)
+        })
     return jsonify(teams)
 
 @app.route('/roster/<team_abbr>')
@@ -28,14 +27,15 @@ def get_roster(team_abbr):
     response = requests.get(roster_url)
     if response.status_code != 200:
         return jsonify({'error': 'Failed to fetch roster'}), 500
-    roster = response.json()['forwards'] + response.json()['defensemen'] + response.json()['goalies']
+    data = response.json()
+    roster = data.get('forwards', []) + data.get('defensemen', []) + data.get('goalies', [])
     players = []
     for player in roster:
         players.append({
             'id': player['id'],
             'name': f"{player['firstName']['default']} {player['lastName']['default']}",
             'position': player['position'],
-            'sweaterNumber': player.get('sweaterNumber', ''),
+            'sweaterNumber': player.get('sweaterNumber', '')
         })
     return jsonify(players)
 
@@ -45,7 +45,6 @@ def get_player_stats(player_id):
     response = requests.get(player_url)
     if response.status_code != 200:
         return jsonify({'error': 'Failed to fetch player stats'}), 500
-
     data = response.json()
     stats = data.get('featuredStats', {}).get('regularSeason', {}).get('subSeason', {})
     player_info = {
