@@ -3,20 +3,31 @@ import requests
 
 app = Flask(__name__)
 
+# Get all teams from standings API
 def get_teams():
-    url = "https://statsapi.web.nhl.com/api/v1/teams"
+    url = "https://api-web.nhle.com/v1/standings/now"
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
-        return data.get('teams', [])
+        teams = []
+        for record in data['standings']:
+            team_info = record['team']
+            teams.append({
+                'id': team_info['id'],
+                'name': team_info['fullName'],
+                'abbreviation': team_info['abbrev'],
+                'logo': f"https://assets.nhle.com/logos/nhl/svg/{team_info['abbrev']}_light.svg"
+            })
+        return teams
     return []
 
+# Get active players for a team
 def get_team_players(team_id):
-    url = f"https://statsapi.web.nhl.com/api/v1/teams/{team_id}/roster"
+    url = f"https://api-web.nhle.com/v1/roster/{team_id}/current"
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
-        return data.get('roster', [])
+        return data.get('forwards', []) + data.get('defensemen', []) + data.get('goalies', [])
     return []
 
 @app.route("/", methods=["GET", "POST"])
