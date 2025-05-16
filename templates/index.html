@@ -2,48 +2,98 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>NHL Stats</title>
+    <title>NHL Team Roster</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        .team {
+            cursor: pointer;
+            margin: 10px 0;
+            display: flex;
+            align-items: center;
+        }
+        .team img {
+            width: 40px;
+            height: 40px;
+            margin-right: 10px;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: center;
+        }
+        th {
+            background-color: #f4f4f4;
+        }
+    </style>
 </head>
 <body>
-    <h1>NHL Teams</h1>
-    <select id="teamSelect">
-        <option value="">Select a team</option>
-    </select>
-    <div id="roster"></div>
+    <h1>NHL Team Roster</h1>
+    <div id="teams"></div>
+    <h2 id="roster-title"></h2>
+    <table id="roster-table" style="display: none;">
+        <thead>
+            <tr>
+                <th>#</th>
+                <th>Name</th>
+                <th>Position</th>
+                <th>Goals</th>
+                <th>Assists</th>
+            </tr>
+        </thead>
+        <tbody id="roster-body"></tbody>
+    </table>
 
     <script>
-        async function loadTeams() {
+        async function fetchTeams() {
             const response = await fetch('/teams');
             const teams = await response.json();
-            const select = document.getElementById('teamSelect');
+
+            const teamsDiv = document.getElementById('teams');
+            teamsDiv.innerHTML = '';
+
             teams.forEach(team => {
-                const option = document.createElement('option');
-                option.value = team.abbrev;
-                option.textContent = team.name;
-                select.appendChild(option);
+                const div = document.createElement('div');
+                div.className = 'team';
+                div.innerHTML = `<img src="${team.logo}" alt="${team.abbrev}"> ${team.name}`;
+                div.addEventListener('click', () => fetchRoster(team.abbrev, team.name));
+                teamsDiv.appendChild(div);
             });
         }
 
-        async function loadRoster(teamAbbrev) {
-            if (!teamAbbrev) return;
-            const response = await fetch(`/roster/${teamAbbrev}`);
+        async function fetchRoster(abbrev, teamName) {
+            const response = await fetch(`/roster/${abbrev}`);
             const players = await response.json();
-            const rosterDiv = document.getElementById('roster');
-            rosterDiv.innerHTML = `<h2>Roster for ${teamAbbrev}</h2>`;
-            const list = document.createElement('ul');
+
+            document.getElementById('roster-title').innerText = `${teamName} Roster`;
+            const rosterTable = document.getElementById('roster-table');
+            const rosterBody = document.getElementById('roster-body');
+
+            rosterBody.innerHTML = '';
+
             players.forEach(player => {
-                const item = document.createElement('li');
-                item.textContent = `${player.sweaterNumber} - ${player.name} (${player.position}) | Goals: ${player.goals}, Assists: ${player.assists}`;
-                list.appendChild(item);
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${player.sweaterNumber}</td>
+                    <td>${player.name}</td>
+                    <td>${player.position}</td>
+                    <td>${player.goals}</td>
+                    <td>${player.assists}</td>
+                `;
+                rosterBody.appendChild(row);
             });
-            rosterDiv.appendChild(list);
+
+            rosterTable.style.display = 'table';
         }
 
-        document.getElementById('teamSelect').addEventListener('change', (e) => {
-            loadRoster(e.target.value);
-        });
-
-        loadTeams();
+        fetchTeams();
     </script>
 </body>
 </html>
