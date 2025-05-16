@@ -4,11 +4,19 @@ import requests
 app = Flask(__name__)
 
 def get_teams():
-    url = "https://statsapi.web.nhl.com/api/v1/teams"
+    url = "https://api-web.nhle.com/v1/teams"
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
-        return data.get('teams', [])
+        teams = []
+        for record in data:
+            teams.append({
+                'id': record['id'],                         # <-- Numerical ID
+                'name': record['fullName'],
+                'abbreviation': record['abbrev'],
+                'logo': f"https://assets.nhle.com/logos/nhl/svg/{record['abbrev']}_light.svg"
+            })
+        return teams
     return []
 
 def get_team_players(team_id):
