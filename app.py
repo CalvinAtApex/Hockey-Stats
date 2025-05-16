@@ -3,38 +3,39 @@ import requests
 
 app = Flask(__name__)
 
-# NHL Standings (for teams)
+# NHL Standings API
 STANDINGS_URL = 'https://api-web.nhle.com/v1/standings/now'
-
-# NHL Roster (per team)
+# NHL Roster API Template
 ROSTER_URL_TEMPLATE = 'https://api-web.nhle.com/v1/roster/{team_abbrev}/20242025'
 
 @app.route('/')
 def index():
     response = requests.get(STANDINGS_URL)
-    data = response.json()
+    if response.status_code != 200:
+        return "Failed to load standings", 500
 
+    data = response.json()
     teams = []
+
     for record in data.get('standings', []):
-        team_data = {
+        teams.append({
             'name': record['teamName']['default'],
             'abbreviation': record['teamAbbrev']['default'],
             'logo': record['teamLogo']
-        }
-        teams.append(team_data)
+        })
 
     return render_template('index.html', teams=teams)
 
 @app.route('/roster/<team_abbrev>')
 def get_roster(team_abbrev):
-    url = ROSTER_URL_TEMPLATE.format(team_abbrev=team_abbrev)
+    url = ROSTER_URL_TEMPLATE.format(team_abbrev=team_abbrev.upper())
     response = requests.get(url)
 
     if response.status_code != 200:
-        return jsonify({'error': f'Failed to fetch roster for {team_abbrev}'}), 500
+        print(f"Error fetching roster for {team_abbrev}: {response.status_code} - {response.text}")
+        return jsonify({'players': []})  # Return empty list, not 500 error
 
     data = response.json()
-
     players = []
 
     for category in ['forwards', 'defensemen', 'goalies']:
