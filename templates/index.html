@@ -2,73 +2,46 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>NHL Stats Viewer</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        .team-list, .roster { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 20px; }
-        .team { cursor: pointer; border: 1px solid #ccc; padding: 10px; border-radius: 5px; text-align: center; width: 120px; }
-        .team img { width: 60px; height: auto; }
-        .player { cursor: pointer; border: 1px solid #ccc; padding: 10px; border-radius: 5px; width: 200px; }
-        .stats { margin-top: 20px; }
-    </style>
+    <title>NHL Stats</title>
 </head>
 <body>
-    <h1>NHL Stats Viewer</h1>
-    <h2>Teams</h2>
-    <div id="teams" class="team-list"></div>
-
-    <h2>Roster</h2>
-    <div id="roster" class="roster"></div>
-
-    <div id="player-stats" class="stats"></div>
+    <h1>NHL Teams</h1>
+    <select id="teamSelect">
+        <option value="">Select a team</option>
+    </select>
+    <div id="roster"></div>
 
     <script>
         async function loadTeams() {
             const response = await fetch('/teams');
             const teams = await response.json();
-            const teamsDiv = document.getElementById('teams');
-            teamsDiv.innerHTML = '';
+            const select = document.getElementById('teamSelect');
             teams.forEach(team => {
-                const teamDiv = document.createElement('div');
-                teamDiv.className = 'team';
-                teamDiv.innerHTML = `
-                    <img src="${team.logo}" alt="${team.abbreviation}">
-                    <div>${team.name}</div>
-                `;
-                teamDiv.addEventListener('click', () => loadRoster(team.abbreviation));
-                teamsDiv.appendChild(teamDiv);
+                const option = document.createElement('option');
+                option.value = team.abbrev;
+                option.textContent = team.name;
+                select.appendChild(option);
             });
         }
 
-        async function loadRoster(teamAbbr) {
-            const response = await fetch(`/roster/${teamAbbr}`);
-            const roster = await response.json();
+        async function loadRoster(teamAbbrev) {
+            if (!teamAbbrev) return;
+            const response = await fetch(`/roster/${teamAbbrev}`);
+            const players = await response.json();
             const rosterDiv = document.getElementById('roster');
-            rosterDiv.innerHTML = '';
-            roster.forEach(player => {
-                const playerDiv = document.createElement('div');
-                playerDiv.className = 'player';
-                playerDiv.innerHTML = `
-                    <strong>#${player.sweaterNumber} ${player.name}</strong><br>
-                    <small>Position: ${player.position}</small>
-                `;
-                playerDiv.addEventListener('click', () => loadPlayerStats(player.id, player.name));
-                rosterDiv.appendChild(playerDiv);
+            rosterDiv.innerHTML = `<h2>Roster for ${teamAbbrev}</h2>`;
+            const list = document.createElement('ul');
+            players.forEach(player => {
+                const item = document.createElement('li');
+                item.textContent = `${player.sweaterNumber} - ${player.name} (${player.position}) | Goals: ${player.goals}, Assists: ${player.assists}`;
+                list.appendChild(item);
             });
+            rosterDiv.appendChild(list);
         }
 
-        async function loadPlayerStats(playerId, playerName) {
-            const response = await fetch(`/player/${playerId}`);
-            const stats = await response.json();
-            const statsDiv = document.getElementById('player-stats');
-            statsDiv.innerHTML = `
-                <h3>${playerName} Stats</h3>
-                <p>Games Played: ${stats.gamesPlayed}</p>
-                <p>Goals: ${stats.goals}</p>
-                <p>Assists: ${stats.assists}</p>
-                <p>Points: ${stats.points}</p>
-            `;
-        }
+        document.getElementById('teamSelect').addEventListener('change', (e) => {
+            loadRoster(e.target.value);
+        });
 
         loadTeams();
     </script>
