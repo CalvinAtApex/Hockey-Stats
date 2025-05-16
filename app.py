@@ -4,17 +4,17 @@ import requests
 app = Flask(__name__)
 
 def get_teams():
-    url = "https://api-web.nhle.com/v1/teams"
+    url = "https://api-web.nhle.com/v1/standings/now"
     response = requests.get(url)
     if response.status_code == 200:
         data = response.json()
         teams = []
-        for record in data:
+        for record in data['standings']:
             teams.append({
-                'id': record['id'],
-                'name': record['fullName'],
-                'abbreviation': record['abbrev'],
-                'logo': record.get('teamLogo')  # optional, but nice
+                'uuid': record['teamUuid'],
+                'abbreviation': record['teamAbbrev'],
+                'name': record['teamName'],
+                'logo': record['teamLogo']
             })
         return teams
     else:
