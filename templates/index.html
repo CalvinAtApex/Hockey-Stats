@@ -25,54 +25,56 @@
     </table>
 
     <script>
+        async function loadTeams() {
+            const response = await fetch("/teams");
+            const data = await response.json();
+
+            const select = document.getElementById("teamSelect");
+            select.innerHTML = `<option value="">Select a team</option>`;
+
+            data.forEach(team => {
+                const option = document.createElement("option");
+                option.value = team.abbrev;
+                option.textContent = team.name;
+                select.appendChild(option);
+            });
+        }
+
+        async function loadRoster(abbrev) {
+            const response = await fetch(`/roster/${abbrev}`);
+            const data = await response.json();
+
+            if (data.error) {
+                alert(data.error);
+                return;
+            }
+
+            const table = document.getElementById("rosterTable");
+            const tbody = table.querySelector("tbody");
+            tbody.innerHTML = "";
+
+            data.forEach(player => {
+                const row = document.createElement("tr");
+                row.innerHTML = `
+                    <td>${player.number}</td>
+                    <td>${player.name}</td>
+                    <td>${player.position}</td>
+                    <td>${player.goals}</td>
+                    <td>${player.assists}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            document.getElementById("teamName").textContent = abbrev;
+            table.style.display = "table";
+        }
+
         document.addEventListener("DOMContentLoaded", () => {
-            fetch("/teams")
-                .then(response => response.json())
-                .then(data => {
-                    const select = document.getElementById("teamSelect");
-                    data.forEach(team => {
-                        const option = document.createElement("option");
-                        option.value = team.abbrev;
-                        option.textContent = team.name;
-                        select.appendChild(option);
-                    });
-                });
+            loadTeams();
 
             document.getElementById("teamSelect").addEventListener("change", function() {
                 const abbrev = this.value;
-                if (!abbrev) return;
-
-                fetch(`/roster/${abbrev}`)
-                    .then(response => response.json())
-                    .then(data => {
-                        if (data.error) {
-                            alert(data.error);
-                            return;
-                        }
-
-                        const table = document.getElementById("rosterTable");
-                        const tbody = table.querySelector("tbody");
-                        tbody.innerHTML = "";
-
-                        data.forEach(player => {
-                            const row = document.createElement("tr");
-                            row.innerHTML = `
-                                <td>${player.number}</td>
-                                <td>${player.name}</td>
-                                <td>${player.position}</td>
-                                <td>${player.goals}</td>
-                                <td>${player.assists}</td>
-                            `;
-                            tbody.appendChild(row);
-                        });
-
-                        document.getElementById("teamName").textContent = abbrev;
-                        table.style.display = "table";
-                    })
-                    .catch(error => {
-                        console.error("Error loading roster:", error);
-                        alert("Error loading roster.");
-                    });
+                if (abbrev) loadRoster(abbrev);
             });
         });
     </script>
