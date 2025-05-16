@@ -24,7 +24,7 @@ app.config['SECURITY_CHANGEABLE'] = False
 # ─── Extensions ─────────────────────────────────────────────────────────────────
 db = SQLAlchemy(app)
 
-# Association table for roles and users
+# Association table for roles ↔ users
 roles_users = db.Table(
     'roles_users',
     db.Column('user_id', db.Integer(), db.ForeignKey('user.id'), primary_key=True),
@@ -53,12 +53,12 @@ class User(db.Model, UserMixin):
 user_datastore = SQLAlchemyUserDatastore(db, User, Role)
 security = Security(app, user_datastore)
 
-# ─── One-time setup before serving ───────────────────────────────────────────────
-@app.before_serving
+# ─── One-time setup before first request ─────────────────────────────────────────
+@app.before_first_request
 def initialize_security():
     db.create_all()
 
-    # Ensure 'admin' role exists
+    # Create 'admin' role if missing
     admin_role = user_datastore.find_role('admin')
     if not admin_role:
         admin_role = user_datastore.create_role(
@@ -66,7 +66,7 @@ def initialize_security():
             description='Site Administrator'
         )
 
-    # Ensure default admin user exists
+    # Create default admin user if missing
     admin_email = os.getenv('ADMIN_EMAIL', 'admin@example.com')
     admin_password = os.getenv('ADMIN_PASSWORD', 'password')
     admin_user = user_datastore.find_user(email=admin_email)
