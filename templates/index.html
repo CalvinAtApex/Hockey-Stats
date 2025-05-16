@@ -1,19 +1,21 @@
+
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>NHL Team Roster</title>
+    <title>NHL Roster Stats</title>
 </head>
 <body>
-    <h1>Select a Team</h1>
+    <h1>Select Team</h1>
     <select id="teamSelect">
         <option value="TOR">Toronto Maple Leafs</option>
         <option value="WPG">Winnipeg Jets</option>
+        <option value="MIN">Minnesota Wild</option>
         <option value="VGK">Vegas Golden Knights</option>
     </select>
 
     <h2>Roster</h2>
-    <table border="1" id="rosterTable">
+    <table border="1">
         <thead>
             <tr>
                 <th>Number</th>
@@ -23,39 +25,33 @@
                 <th>Assists</th>
             </tr>
         </thead>
-        <tbody></tbody>
+        <tbody id="rosterTableBody"></tbody>
     </table>
 
     <script>
-        async function loadRoster(teamAbbrev) {
-            const response = await fetch(`/roster/${teamAbbrev}`);
-            const data = await response.json();
-            const tbody = document.querySelector('#rosterTable tbody');
-            tbody.innerHTML = '';
-
-            if (data.players) {
-                data.players.forEach(player => {
-                    const row = document.createElement('tr');
-                    row.innerHTML = `
-                        <td>${player.number}</td>
-                        <td>${player.name}</td>
-                        <td>${player.position}</td>
-                        <td>${player.goals}</td>
-                        <td>${player.assists}</td>
-                    `;
-                    tbody.appendChild(row);
-                });
-            } else {
-                tbody.innerHTML = '<tr><td colspan="5">Error loading roster.</td></tr>';
-            }
-        }
-
         document.getElementById('teamSelect').addEventListener('change', function() {
-            loadRoster(this.value);
+            const team = this.value;
+            fetch(`/roster/${team}`)
+                .then(response => response.json())
+                .then(data => {
+                    const tbody = document.getElementById('rosterTableBody');
+                    tbody.innerHTML = '';
+                    data.players.forEach(player => {
+                        const row = `<tr>
+                            <td>${player.number}</td>
+                            <td>${player.name}</td>
+                            <td>${player.position}</td>
+                            <td>${player.goals}</td>
+                            <td>${player.assists}</td>
+                        </tr>`;
+                        tbody.innerHTML += row;
+                    });
+                })
+                .catch(() => alert('Error loading roster.'));
         });
 
-        // Load default
-        loadRoster(document.getElementById('teamSelect').value);
+        // Trigger initial load
+        document.getElementById('teamSelect').dispatchEvent(new Event('change'));
     </script>
 </body>
 </html>

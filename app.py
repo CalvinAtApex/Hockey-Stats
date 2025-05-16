@@ -1,3 +1,4 @@
+
 from flask import Flask, render_template, jsonify
 import aiohttp
 import asyncio
@@ -5,49 +6,53 @@ import asyncio
 app = Flask(__name__)
 
 @app.route('/')
-def index():
+async def index():
     return render_template('index.html')
-
-async def fetch_player_stats(session, player):
-    url = f"https://api-web.nhle.com/v1/player/{player['id']}/summary"
-    async with session.get(url) as resp:
-        if resp.status != 200:
-            print(f"Failed to fetch stats for player {player['id']}: {resp.status}")
-            return {**player, 'goals': 0, 'assists': 0}
-        data = await resp.json()
-        stats = data.get('seasonTotals', [{}])[0].get('stat', {})
-        return {
-            **player,
-            'goals': stats.get('goals', 0),
-            'assists': stats.get('assists', 0)
-        }
 
 @app.route('/roster/<team_abbrev>')
 async def get_roster(team_abbrev):
-    url = f"https://api-web.nhle.com/v1/roster/{team_abbrev}/20242025"
+    roster_url = f'https://api-web.nhle.com/v1/roster/{team_abbrev}/20242025'
+    stats_url = 'https://api-web.nhle.com/v1/players/'
+
     async with aiohttp.ClientSession() as session:
-        async with session.get(url) as resp:
+        async with session.get(roster_url) as resp:
             if resp.status != 200:
                 return jsonify({'error': 'Failed to fetch roster'}), 500
-            roster_data = await resp.json()
+            data = await resp.json()
 
         players = []
-        for group in ['forwards', 'defensemen', 'goalies']:
-            for player in roster_data.get(group, []):
+        for category in ['forwards', 'defensemen', 'goalies']:
+            for player in data.get(category, []):
                 players.append({
                     'id': player['id'],
                     'name': f"{player['firstName']['default']} {player['lastName']['default']}",
                     'number': player.get('sweaterNumber', 'N/A'),
-                    'position': player.get('positionCode', 'N/A')
+                    'position': player.get('positionCode', 'N/A'),
+                    'goals': 0,  # Will update from stats call
+                    'assists': 0
                 })
 
-        tasks = [fetch_player_stats(session, player) for player in players]
-        enriched_players = await asyncio.gather(*tasks)
+        # Fetch player stats
+        async def fetch_stats(player_id):
+            async with session.get(f'{stats_url}{player_id}/summary') as stat_resp:
+                if stat_resp.status != 200:
+                    return {'goals': 0, 'assists': 0}
+                stats_data = await stat_resp.json()
+                stats = stats_data.get('stats', {})
+                return {
+                    'goals': stats.get('goals', 0),
+                    'assists': stats.get('assists', 0)
+                }
 
-    if not enriched_players:
-        return jsonify({'error': 'No roster data found.'}), 404
+        tasks = [fetch_stats(p['id']) for p in players]
+        stats_results = await asyncio.gather(*tasks)
 
-    return jsonify({'players': enriched_players})
+        # Update players with stats
+        for p, s in zip(players, stats_results):
+            p['goals'] = s['goals']
+            p['assists'] = s['assists']
+
+    return jsonify({'players': players})
 
 if __name__ == '__main__':
     app.run(debug=True)

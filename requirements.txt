@@ -1,5 +1,2 @@
-flask
-requests
-gunicorn
-aiohttp
 Flask[async]
+aiohttp
