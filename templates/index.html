@@ -1,23 +1,29 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>NHL Team Roster</title>
+    <meta charset="UTF-8">
+    <title>NHL Roster Stats</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        select { font-size: 16px; padding: 5px; }
+        table { border-collapse: collapse; margin-top: 20px; width: 100%; }
+        th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+        th { background-color: #f2f2f2; }
+    </style>
 </head>
 <body>
-    <h1>Select a Team</h1>
-    <select id="team-select">
-        <option value="">-- Select a Team --</option>
-        {% for team in teams %}
-            <option value="{{ team.abbrev }}">{{ team.name }}</option>
-        {% endfor %}
+    <h1>NHL Team Roster Stats</h1>
+
+    <label for="teamSelect">Select a team:</label>
+    <select id="teamSelect">
+        <option value="">-- Select Team --</option>
     </select>
 
-    <h2>Roster</h2>
-    <table border="1" id="roster-table">
+    <table id="rosterTable" style="display:none;">
         <thead>
             <tr>
-                <th>Name</th>
                 <th>Number</th>
+                <th>Name</th>
                 <th>Position</th>
                 <th>Goals</th>
                 <th>Assists</th>
@@ -26,37 +32,73 @@
         <tbody></tbody>
     </table>
 
+    <p id="message"></p>
+
     <script>
-        document.getElementById('team-select').addEventListener('change', async function() {
-            const teamAbbrev = this.value;
-            const tbody = document.querySelector('#roster-table tbody');
-            tbody.innerHTML = '';
+        async function loadTeams() {
+            const res = await fetch("/teams");
+            if (!res.ok) {
+                document.getElementById("message").textContent = "Failed to load teams.";
+                return;
+            }
 
-            if (teamAbbrev) {
-                try {
-                    const response = await fetch(`/roster/${teamAbbrev}`);
-                    const data = await response.json();
+            const teams = await res.json();
+            const select = document.getElementById("teamSelect");
 
-                    if (data.length === 0) {
-                        tbody.innerHTML = '<tr><td colspan="5">No roster data found.</td></tr>';
-                    } else {
-                        data.forEach(player => {
-                            const row = `
-                                <tr>
-                                    <td>${player.name}</td>
-                                    <td>${player.number}</td>
-                                    <td>${player.position}</td>
-                                    <td>${player.goals}</td>
-                                    <td>${player.assists}</td>
-                                </tr>`;
-                            tbody.innerHTML += row;
-                        });
-                    }
-                } catch (err) {
-                    tbody.innerHTML = '<tr><td colspan="5">Error loading roster.</td></tr>';
-                }
+            teams.forEach(team => {
+                const option = document.createElement("option");
+                option.value = team.id;
+                option.textContent = team.name;
+                select.appendChild(option);
+            });
+        }
+
+        async function loadRoster(teamId) {
+            const res = await fetch(`/roster/${teamId}`);
+            const table = document.getElementById("rosterTable");
+            const tbody = table.querySelector("tbody");
+            const message = document.getElementById("message");
+
+            tbody.innerHTML = "";
+            table.style.display = "none";
+            message.textContent = "";
+
+            if (!res.ok) {
+                message.textContent = "Error loading roster.";
+                return;
+            }
+
+            const players = await res.json();
+            if (!players.length) {
+                message.textContent = "No roster data found.";
+                return;
+            }
+
+            players.forEach(player => {
+                const row = document.createElement("tr");
+
+                row.innerHTML = `
+                    <td>${player.number}</td>
+                    <td>${player.name}</td>
+                    <td>${player.position}</td>
+                    <td>${player.goals}</td>
+                    <td>${player.assists}</td>
+                `;
+
+                tbody.appendChild(row);
+            });
+
+            table.style.display = "table";
+        }
+
+        document.getElementById("teamSelect").addEventListener("change", function() {
+            const teamId = this.value;
+            if (teamId) {
+                loadRoster(teamId);
             }
         });
+
+        loadTeams();
     </script>
 </body>
 </html>
