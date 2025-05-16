@@ -4,18 +4,21 @@
     <meta charset="utf-8">
     <title>Log In</title>
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <!-- Bootstrap CSS (optional, swap for your own) -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Bootstrap CSS -->
+    <link 
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" 
+      rel="stylesheet"
+    >
   </head>
   <body class="d-flex align-items-center justify-content-center vh-100 bg-light">
     <div class="card shadow-sm p-4" style="max-width: 350px; width: 100%;">
       <h4 class="card-title mb-3 text-center">Please sign in</h4>
 
-      {% with messages = get_flashed_messages() %}
+      {% with messages = get_flashed_messages(with_categories=true) %}
         {% if messages %}
           <div class="mb-3">
-            {% for msg in messages %}
-              <div class="alert alert-warning">{{ msg }}</div>
+            {% for category, msg in messages %}
+              <div class="alert alert-{{ category }}">{{ msg }}</div>
             {% endfor %}
           </div>
         {% endif %}
@@ -47,7 +50,9 @@
       </form>
     </div>
 
-    <!-- Bootstrap JS (optional) -->
-    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <!-- Bootstrap JS -->
+    <script 
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
+    </script>
   </body>
 </html>
