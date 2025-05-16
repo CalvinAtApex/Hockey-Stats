@@ -2,24 +2,24 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>NHL Roster Stats</title>
+    <title>NHL Team Roster</title>
     <style>
-        body { font-family: Arial, sans-serif; margin: 20px; }
-        select { font-size: 16px; padding: 5px; }
-        table { border-collapse: collapse; margin-top: 20px; width: 100%; }
+        body { font-family: sans-serif; margin: 20px; }
+        select { padding: 5px; font-size: 16px; }
+        table { border-collapse: collapse; width: 100%; margin-top: 20px; }
         th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
         th { background-color: #f2f2f2; }
+        #loading { margin-top: 10px; font-style: italic; }
     </style>
 </head>
 <body>
-    <h1>NHL Team Roster Stats</h1>
-
+    <h1>NHL Team Roster</h1>
     <label for="teamSelect">Select a team:</label>
     <select id="teamSelect">
-        <option value="">-- Select Team --</option>
+        <option value="">-- Select a Team --</option>
     </select>
-
-    <table id="rosterTable" style="display:none;">
+    <div id="loading" style="display: none;">Loading roster...</div>
+    <table id="rosterTable" style="display: none;">
         <thead>
             <tr>
                 <th>Number</th>
@@ -32,73 +32,66 @@
         <tbody></tbody>
     </table>
 
-    <p id="message"></p>
-
     <script>
-        async function loadTeams() {
-            const res = await fetch("/teams");
-            if (!res.ok) {
-                document.getElementById("message").textContent = "Failed to load teams.";
-                return;
-            }
-
+        async function fetchTeams() {
+            const res = await fetch('/teams');
             const teams = await res.json();
-            const select = document.getElementById("teamSelect");
-
+            const select = document.getElementById('teamSelect');
             teams.forEach(team => {
-                const option = document.createElement("option");
-                option.value = team.id;
+                const option = document.createElement('option');
+                option.value = team.abbrev;
                 option.textContent = team.name;
                 select.appendChild(option);
             });
         }
 
-        async function loadRoster(teamId) {
-            const res = await fetch(`/roster/${teamId}`);
-            const table = document.getElementById("rosterTable");
-            const tbody = table.querySelector("tbody");
-            const message = document.getElementById("message");
+        async function fetchRoster(teamAbbrev) {
+            const loading = document.getElementById('loading');
+            const table = document.getElementById('rosterTable');
+            const tbody = table.querySelector('tbody');
+            tbody.innerHTML = '';
+            loading.style.display = 'block';
+            table.style.display = 'none';
 
-            tbody.innerHTML = "";
-            table.style.display = "none";
-            message.textContent = "";
+            try {
+                const res = await fetch(`/roster/${teamAbbrev}`);
+                const players = await res.json();
 
-            if (!res.ok) {
-                message.textContent = "Error loading roster.";
-                return;
+                if (players.error || players.length === 0) {
+                    tbody.innerHTML = `<tr><td colspan="5">No roster data found.</td></tr>`;
+                } else {
+                    players.forEach(player => {
+                        const row = document.createElement('tr');
+                        row.innerHTML = `
+                            <td>${player.number}</td>
+                            <td>${player.name}</td>
+                            <td>${player.position}</td>
+                            <td>${player.goals}</td>
+                            <td>${player.assists}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                }
+
+                table.style.display = 'table';
+            } catch (error) {
+                console.error('Error loading roster:', error);
+                tbody.innerHTML = `<tr><td colspan="5">Error loading roster.</td></tr>`;
+                table.style.display = 'table';
+            } finally {
+                loading.style.display = 'none';
             }
-
-            const players = await res.json();
-            if (!players.length) {
-                message.textContent = "No roster data found.";
-                return;
-            }
-
-            players.forEach(player => {
-                const row = document.createElement("tr");
-
-                row.innerHTML = `
-                    <td>${player.number}</td>
-                    <td>${player.name}</td>
-                    <td>${player.position}</td>
-                    <td>${player.goals}</td>
-                    <td>${player.assists}</td>
-                `;
-
-                tbody.appendChild(row);
-            });
-
-            table.style.display = "table";
         }
 
-        document.getElementById("teamSelect").addEventListener("change", function() {
-            const teamId = this.value;
-            if (teamId) {
-                loadRoster(teamId);
+        document.getElementById('teamSelect').addEventListener('change', function() {
+            if (this.value) {
+                fetchRoster(this.value);
+            } else {
+                document.getElementById('rosterTable').style.display = 'none';
             }
         });
 
-        loadTeams();
+        fetchTeams();
     </script>
 </body>
 </html>
