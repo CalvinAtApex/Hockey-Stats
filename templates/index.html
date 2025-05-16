@@ -2,90 +2,57 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>NHL Team Stats</title>
+    <title>NHL Stats</title>
 </head>
 <body>
-    <h1>Select NHL Team</h1>
+    <h1>NHL Team Stats</h1>
     <select id="teamSelect">
         <option value="">Select a team</option>
     </select>
-
-    <h2 id="teamName"></h2>
-    <table id="rosterTable" border="1" style="display:none;">
-        <thead>
-            <tr>
-                <th>Number</th>
-                <th>Name</th>
-                <th>Position</th>
-                <th>Goals</th>
-                <th>Assists</th>
-            </tr>
-        </thead>
-        <tbody></tbody>
-    </table>
+    <div id="roster"></div>
 
     <script>
         async function loadTeams() {
-            const response = await fetch("/teams");
-            const data = await response.json();
-            console.log("Teams fetched:", data);
-
-            const select = document.getElementById("teamSelect");
-            select.innerHTML = `<option value="">Select a team</option>`;
-
-            data.forEach(team => {
-                const abbrev = team.teamAbbrev;
-                const name = team.teamName?.default || team.fullTeamName?.default || abbrev;
-
-                if (!abbrev || !name) {
-                    console.warn("Skipping team with missing data", team);
-                    return;
-                }
-
-                const option = document.createElement("option");
-                option.value = abbrev;
-                option.textContent = name;
+            const response = await fetch('/teams');
+            const teams = await response.json();
+            const select = document.getElementById('teamSelect');
+            teams.forEach(team => {
+                const option = document.createElement('option');
+                option.value = team.abbreviation;
+                option.textContent = team.name;
                 select.appendChild(option);
             });
         }
 
-        async function loadRoster(abbrev) {
-            const response = await fetch(`/roster/${abbrev}`);
-            const data = await response.json();
-
-            if (data.error) {
-                alert(data.error);
-                return;
-            }
-
-            const table = document.getElementById("rosterTable");
-            const tbody = table.querySelector("tbody");
-            tbody.innerHTML = "";
-
-            data.forEach(player => {
-                const row = document.createElement("tr");
-                row.innerHTML = `
-                    <td>${player.number}</td>
-                    <td>${player.name}</td>
-                    <td>${player.position}</td>
-                    <td>${player.goals}</td>
-                    <td>${player.assists}</td>
-                `;
-                tbody.appendChild(row);
+        async function loadRoster(teamAbbr) {
+            const rosterDiv = document.getElementById('roster');
+            rosterDiv.innerHTML = 'Loading roster...';
+            const response = await fetch(`/roster/${teamAbbr}`);
+            const players = await response.json();
+            rosterDiv.innerHTML = '';
+            players.forEach(player => {
+                const playerDiv = document.createElement('div');
+                playerDiv.textContent = `${player.sweaterNumber} - ${player.name} (${player.position})`;
+                playerDiv.style.cursor = 'pointer';
+                playerDiv.addEventListener('click', () => loadPlayerStats(player.id, playerDiv));
+                rosterDiv.appendChild(playerDiv);
             });
-
-            document.getElementById("teamName").textContent = abbrev;
-            table.style.display = "table";
         }
 
-        document.addEventListener("DOMContentLoaded", () => {
-            loadTeams();
+        async function loadPlayerStats(playerId, element) {
+            element.innerHTML += ' ...loading stats';
+            const response = await fetch(`/player/${playerId}`);
+            const stats = await response.json();
+            element.innerHTML = `${element.textContent.split(' ...')[0]} | GP: ${stats.gamesPlayed}, G: ${stats.goals}, A: ${stats.assists}, P: ${stats.points}`;
+        }
 
-            document.getElementById("teamSelect").addEventListener("change", function() {
-                const abbrev = this.value;
-                if (abbrev) loadRoster(abbrev);
-            });
+        document.getElementById('teamSelect').addEventListener('change', function() {
+            if (this.value) {
+                loadRoster(this.value);
+            }
         });
+
+        loadTeams();
     </script>
 </body>
 </html>
