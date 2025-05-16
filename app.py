@@ -30,4 +30,15 @@ def get_team_players(team_id):
 
 @app.route("/", methods=["GET", "POST"])
 def index():
-    teams = get_teams_
+    teams = get_teams()
+    players = []
+    selected_team = None
+
+    if request.method == "POST":
+        selected_team = request.form.get("team")
+        players = get_team_players(selected_team)
+
+    return render_template("index.html", teams=teams, players=players, selected_team=selected_team)
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=10000)
