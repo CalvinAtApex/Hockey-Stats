@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>NHL Player Stats Viewer</title>
+</head>
+<body>
+    <h1>NHL Player Stats Viewer</h1>
+
+    <form method="POST">
+        <label for="team">Select a Team:</label>
+        <select name="team" id="team" required>
+            <option value="">-- Choose a team --</option>
+            {% for team in teams %}
+                <option value="{{ team.id }}" {% if selected_team == team.id %}selected{% endif %}>
+                    {{ team.name }}
+                </option>
+            {% endfor %}
+        </select>
+        <button type="submit">Show Players</button>
+    </form>
+
+    {% if players %}
+        <h2>Players</h2>
+        <table border="1">
+            <tr>
+                <th>Name</th>
+                <th>Position</th>
+                <th>Jersey Number</th>
+            </tr>
+            {% for player in players %}
+                <tr>
+                    <td>{{ player.full_name }}</td>
+                    <td>{{ player.primary_position }}</td>
+                    <td>{{ player.jersey_number or 'N/A' }}</td>
+                </tr>
+            {% endfor %}
+        </table>
+    {% endif %}
+</body>
+</html>
