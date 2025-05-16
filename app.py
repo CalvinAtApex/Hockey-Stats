@@ -20,7 +20,8 @@ def teams():
     data = resp.json().get('standings', [])
     divisions = {}
     for t in data:
-        div = t['divisionAbbrev']['default']
+        # divisionAbbrev is a plain string in the API now
+        div = t['divisionAbbrev']
         divisions.setdefault(div, []).append({
             'abbr': t['teamAbbrev']['default'],
             'name': t['teamCommonName']['default'],
@@ -37,11 +38,11 @@ def roster(team_abbrev):
     for grp in ('forwards', 'defensemen', 'goalies'):
         for p in data.get(grp, []):
             players.append({
-                'id':           p['id'],
-                'name':         f"{p['firstName']['default']} {p['lastName']['default']}",
-                'number':       p.get('sweaterNumber'),
-                'pos':          p.get('positionCode'),
-                'headshot':     p.get('headshot')
+                'id':       p['id'],
+                'name':     f"{p['firstName']['default']} {p['lastName']['default']}",
+                'number':   p.get('sweaterNumber'),
+                'pos':      p.get('positionCode'),
+                'headshot': p.get('headshot')
             })
     return jsonify(players)
 
@@ -62,19 +63,19 @@ def player(player_id):
         'position': d.get('position'),
         'headshot': d.get('headshot'),
         'regular': {
-            'season':   fs.get('season'),
-            'games':    reg.get('gamesPlayed'),
-            'goals':    reg.get('goals'),
-            'assists':  reg.get('assists'),
-            'points':   reg.get('points'),
-            'plusMinus':reg.get('plusMinus')
+            'season':    fs.get('season'),
+            'games':     reg.get('gamesPlayed'),
+            'goals':     reg.get('goals'),
+            'assists':   reg.get('assists'),
+            'points':    reg.get('points'),
+            'plusMinus': reg.get('plusMinus')
         },
         'playoffs': {
-            'games':    po.get('gamesPlayed'),
-            'goals':    po.get('goals'),
-            'assists':  po.get('assists'),
-            'points':   po.get('points'),
-            'plusMinus':po.get('plusMinus')
+            'games':     po.get('gamesPlayed'),
+            'goals':     po.get('goals'),
+            'assists':   po.get('assists'),
+            'points':    po.get('points'),
+            'plusMinus': po.get('plusMinus')
         }
     }
     return jsonify(out)
