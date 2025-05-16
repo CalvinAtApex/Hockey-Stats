@@ -1,5 +1,6 @@
 import os
-from flask import Flask, render_template, jsonify, request
+import uuid
+from flask import Flask, render_template, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from flask_security import Security, SQLAlchemyUserDatastore, \
     UserMixin, RoleMixin, login_required
@@ -36,11 +37,18 @@ class Role(db.Model, RoleMixin):
     description = db.Column(db.String(255))
 
 class User(db.Model, UserMixin):
-    id       = db.Column(db.Integer, primary_key=True)
-    email    = db.Column(db.String(255), unique=True, nullable=False)
-    password = db.Column(db.String(255), nullable=False)
-    active   = db.Column(db.Boolean(), default=True)
-    roles    = db.relationship('Role', secondary=roles_users, backref=db.backref('users', lazy='dynamic'))
+    id              = db.Column(db.Integer, primary_key=True)
+    email           = db.Column(db.String(255), unique=True, nullable=False)
+    password        = db.Column(db.String(255), nullable=False)
+    fs_uniquifier   = db.Column(
+                        db.String(255),
+                        unique=True,
+                        nullable=False,
+                        default=lambda: str(uuid.uuid4())
+                     )
+    active          = db.Column(db.Boolean(), default=True)
+    roles           = db.relationship('Role', secondary=roles_users,
+                                      backref=db.backref('users', lazy='dynamic'))
 
 user_datastore = SQLAlchemyUserDatastore(db, User, Role)
 security = Security(app, user_datastore)
@@ -49,6 +57,7 @@ security = Security(app, user_datastore)
 @app.before_serving
 def initialize_security():
     db.create_all()
+
     # Ensure 'admin' role exists
     admin_role = user_datastore.find_role('admin')
     if not admin_role:
@@ -76,28 +85,17 @@ def initialize_security():
 def index():
     return render_template('index.html')
 
-
 @app.route('/teams')
 @login_required
 def teams():
     # ... your existing logic to fetch and render teams ...
-    # Example placeholder:
-    from requests import get
-    resp = get('https://api-web.nhle.com/v1/standings/now')
-    data = resp.json()['standings']
-    return render_template('teams.html', standings=data)
-
+    return render_template('teams.html')
 
 @app.route('/roster/<team_abbrev>')
 @login_required
 def roster(team_abbrev):
     # ... your existing logic to fetch and render a team's roster ...
-    from requests import get
-    resp = get(f'https://api-web.nhle.com/v1/roster/{team_abbrev}/current')
-    return jsonify(resp.json())
-
-
-# ─── Error handlers, other endpoints, etc. ──────────────────────────────────────
+    return jsonify({})
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=int(os.getenv('PORT', 5000)))
