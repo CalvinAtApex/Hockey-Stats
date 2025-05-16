@@ -7,33 +7,25 @@
   <link
     href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
     rel="stylesheet"
-    integrity="sha384-ENjdO4Dr2bkBIFxQpeoA6VKH7Bv0F6N5U6g9T9QlWj9gqQ0gI5g5eJk5nQvZl3x2"
-    crossorigin="anonymous"
   >
   <style>
-    /* Full-screen spinner overlay while data loads */
     #spinner-overlay {
-      position: fixed;
-      top: 0; left: 0;
+      position: fixed; top: 0; left: 0;
       width: 100%; height: 100%;
       background: rgba(255,255,255,0.8);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display: flex; align-items: center; justify-content: center;
       z-index: 9999;
     }
   </style>
 </head>
 <body>
 
-  <!-- Spinner Overlay -->
   <div id="spinner-overlay">
     <div class="spinner-border" role="status">
       <span class="visually-hidden">Loading…</span>
     </div>
   </div>
 
-  <!-- Navbar with Divisions on the Left -->
   <nav class="navbar navbar-expand-lg navbar-light bg-light">
     <div class="container-fluid">
       <a class="navbar-brand" href="#">Hockey Stats</a>
@@ -42,31 +34,22 @@
         type="button"
         data-bs-toggle="collapse"
         data-bs-target="#navbarDivisions"
-        aria-controls="navbarDivisions"
-        aria-expanded="false"
-        aria-label="Toggle navigation"
       >
         <span class="navbar-toggler-icon"></span>
       </button>
 
       <div class="collapse navbar-collapse" id="navbarDivisions">
-        <ul class="navbar-nav me-auto mb-2 mb-lg-0" id="division-nav">
-          <!-- Division dropdowns injected here -->
-        </ul>
+        <ul class="navbar-nav me-auto mb-2 mb-lg-0" id="division-nav"></ul>
       </div>
     </div>
   </nav>
 
-  <!-- Main Content: Roster + stats -->
   <div class="container mt-4" id="content"></div>
 
   <script
     src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"
-    integrity="sha384-qENBo3uWyt5P1X0q8qz3dU44yRv76I3fZJtkME6Fqf3Z6MrBleGz+1l9Owi5W6tD"
-    crossorigin="anonymous"
   ></script>
   <script>
-    // 1) Load divisions & teams
     async function loadTeams() {
       const res = await fetch('/teams');
       const divisions = await res.json();
@@ -76,21 +59,16 @@
         const li = document.createElement('li');
         li.className = 'nav-item dropdown';
         li.innerHTML = `
-          <a
-            class="nav-link dropdown-toggle"
-            href="#"
-            id="nav-${div}"
-            role="button"
-            data-bs-toggle="dropdown"
-            aria-expanded="false"
+          <a class="nav-link dropdown-toggle"
+             href="#" id="nav-${div}"
+             data-bs-toggle="dropdown"
           >${div}</a>
           <ul class="dropdown-menu" aria-labelledby="nav-${div}">
             ${teams.map(team => `
               <li>
-                <a
-                  class="dropdown-item d-flex align-items-center"
-                  href="#"
-                  onclick="loadRoster('${team.abbr}')"
+                <a class="dropdown-item d-flex align-items-center"
+                   href="#"
+                   onclick="loadRoster('${team.abbr}')"
                 >
                   <img src="${team.logo}" width="20" class="me-2"/>
                   ${team.name}
@@ -103,7 +81,6 @@
       });
     }
 
-    // 2) Load a team's roster + render compact table with stats
     async function loadRoster(abbrev) {
       document.getElementById('content').innerHTML = '';
       const res = await fetch(`/roster/${abbrev}`);
@@ -114,19 +91,15 @@
       table.innerHTML = `
         <thead>
           <tr>
-            <th>#</th>
-            <th>Player</th>
-            <th>Pos</th>
-            <th>GP</th>
-            <th>G</th>
-            <th>A</th>
-            <th>P</th>
+            <th>#</th><th>Player</th><th>Pos</th>
+            <th>GP</th><th>G</th><th>A</th><th>P</th>
+            <th>Playoff G</th><th>Playoff A</th><th>Playoff P</th>
           </tr>
         </thead>
         <tbody>
           ${players.map(p => `
             <tr>
-              <td>${p.number || ''}</td>
+              <td>${p.number||''}</td>
               <td class="d-flex align-items-center">
                 <img src="${p.headshot}" width="24" class="me-2 rounded-circle"/>
                 ${p.name}
@@ -136,15 +109,16 @@
               <td>${p.g}</td>
               <td>${p.a}</td>
               <td>${p.p}</td>
+              <td>${p.playoffGoals}</td>
+              <td>${p.playoffAssists}</td>
+              <td>${p.playoffPoints}</td>
             </tr>
           `).join('')}
         </tbody>
       `;
-
       document.getElementById('content').appendChild(table);
     }
 
-    // On load: get teams, then hide spinner
     window.addEventListener('DOMContentLoaded', async () => {
       await loadTeams();
       document.getElementById('spinner-overlay').style.display = 'none';
