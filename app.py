@@ -68,33 +68,32 @@ async def get_roster(team_id):
 
         return jsonify(players)
 
-async def get_player_stats(player_id):
+async def get_player_stats(session, player_id):
     url = f"https://api-web.nhle.com/v1/player/{player_id}/landing"
-    async with aiohttp.ClientSession() as session:
-        async with session.get(url) as response:
-            if response.status != 200:
-                return {'goals': 0, 'assists': 0}
+    async with session.get(url) as response:
+        if response.status != 200:
+            return {'goals': 0, 'assists': 0}
 
-            data = await response.json()
+        data = await response.json()
 
-            # Get current season ID dynamically
-            season_id = get_current_season_id()
+        # Get current season ID dynamically
+        season_id = get_current_season_id()
 
-            # Filter for NHL stats for current season
-            splits = data.get("featuredStats", {}).get("regularSeason", {}).get("subSeason", [])
+        # Filter for NHL stats for current season
+        splits = data.get("featuredStats", {}).get("regularSeason", {}).get("subSeason", [])
 
-            nhl_stats = next(
-                (entry for entry in splits if entry.get("leagueAbbrev") == "NHL" and entry.get("seasonId") == season_id),
-                None
-            )
+        nhl_stats = next(
+            (entry for entry in splits if entry.get("leagueAbbrev") == "NHL" and entry.get("seasonId") == season_id),
+            None
+        )
 
-            if nhl_stats and 'stat' in nhl_stats:
-                goals = nhl_stats['stat'].get('goals', 0)
-                assists = nhl_stats['stat'].get('assists', 0)
-            else:
-                goals = assists = 0
+        if nhl_stats and 'stat' in nhl_stats:
+            goals = nhl_stats['stat'].get('goals', 0)
+            assists = nhl_stats['stat'].get('assists', 0)
+        else:
+            goals = assists = 0
 
-            return {'goals': goals, 'assists': assists}
+        return {'goals': goals, 'assists': assists}
 
 if __name__ == "__main__":
     app.run(debug=True)
