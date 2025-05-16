@@ -5,6 +5,3 @@ services:
     plan: free
     buildCommand: ""
     startCommand: gunicorn app:app
-    envVars:
-      - key: SPORTSRADAR_API_KEY
-        value: a8dfa20cd478b6f05f53dc0eb2c52551
