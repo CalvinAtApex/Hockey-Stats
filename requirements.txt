@@ -3,3 +3,5 @@ aiohttp
 gunicorn
 requests
 Flask-Login
+Flask-User>=1.0.2.1
+Flask-Security-Too>=5.1.1
