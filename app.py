@@ -1,61 +1,49 @@
-from flask import Flask, render_template, jsonify
-import aiohttp
-import asyncio
+from flask import Flask, jsonify, render_template
+import requests
 
 app = Flask(__name__)
 
-TEAMS_URL = 'https://api-web.nhle.com/v1/teams'
-ROSTER_URL_TEMPLATE = 'https://api-web.nhle.com/v1/roster/{team_abbrev}/20242025'
-STATS_URL_TEMPLATE = 'https://api-web.nhle.com/v1/player/{player_id}/landing'
-
-async def fetch_json(session, url):
-    async with session.get(url) as response:
-        if response.status == 200:
-            return await response.json()
-        return {}
-
 @app.route('/')
-async def index():
-    async with aiohttp.ClientSession() as session:
-        data = await fetch_json(session, TEAMS_URL)
-        teams = [
-            {'abbrev': team['abbrev'], 'name': team['fullName']}
-            for team in data.get('teams', [])
-        ]
-    return render_template('index.html', teams=teams)
+def index():
+    return render_template('index.html')
+
+@app.route('/teams')
+def get_teams():
+    url = 'https://api-web.nhle.com/v1/standings/now'
+    response = requests.get(url)
+    data = response.json()
+
+    teams = []
+    for record in data.get('standings', []):
+        team_info = {
+            'abbrev': record['teamAbbrev']['default'],
+            'name': record['teamName']['default']
+        }
+        teams.append(team_info)
+
+    return jsonify({'teams': teams})
 
 @app.route('/roster/<team_abbrev>')
-async def get_roster(team_abbrev):
-    async with aiohttp.ClientSession() as session:
-        roster_url = ROSTER_URL_TEMPLATE.format(team_abbrev=team_abbrev)
-        roster_data = await fetch_json(session, roster_url)
+def get_roster(team_abbrev):
+    url = f'https://api-web.nhle.com/v1/roster/{team_abbrev}/20242025'
+    response = requests.get(url)
+    data = response.json()
 
-        players = []
-        for category in ['forwards', 'defensemen', 'goalies']:
-            for player in roster_data.get(category, []):
-                player_id = player['id']
-                stats_url = STATS_URL_TEMPLATE.format(player_id=player_id)
-                stats_data = await fetch_json(session, stats_url)
+    players = []
 
-                # Find season totals for 20242025 or default to 0s
-                season_totals = next(
-                    (s for s in stats_data.get('seasonTotals', []) if s.get('seasonId') == 20242025),
-                    {}
-                )
+    for group in ['forwards', 'defensemen', 'goalies']:
+        for player in data.get(group, []):
+            player_info = {
+                'id': player['id'],
+                'number': player.get('sweaterNumber', ''),
+                'name': f"{player['firstName']['default']} {player['lastName']['default']}",
+                'position': player.get('positionCode', ''),
+                'goals': 0,    # Placeholder
+                'assists': 0   # Placeholder
+            }
+            players.append(player_info)
 
-                players.append({
-                    'id': player_id,
-                    'name': f"{player['firstName']['default']} {player['lastName']['default']}",
-                    'number': player.get('sweaterNumber', 'N/A'),
-                    'position': player.get('positionCode', 'N/A'),
-                    'goals': season_totals.get('goals', 0),
-                    'assists': season_totals.get('assists', 0)
-                })
-
-    if not players:
-        return jsonify({'error': 'No roster data found.'}), 404
-
-    return jsonify(players)
+    return jsonify({'players': players})
 
 if __name__ == '__main__':
     app.run(debug=True)
