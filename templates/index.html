@@ -1,57 +1,63 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>NHL Roster Stats</title>
+    <title>NHL Team Roster</title>
 </head>
 <body>
-    <h1>Select Team</h1>
+    <h1>Select a Team</h1>
     <select id="teamSelect">
-        <option value="TOR">Toronto Maple Leafs</option>
-        <option value="WPG">Winnipeg Jets</option>
-        <option value="MIN">Minnesota Wild</option>
-        <option value="VGK">Vegas Golden Knights</option>
+        <option value="">-- Select a Team --</option>
+        {% for team in teams %}
+            <option value="{{ team.abbrev }}">{{ team.name }}</option>
+        {% endfor %}
     </select>
 
     <h2>Roster</h2>
-    <table border="1">
-        <thead>
-            <tr>
-                <th>Number</th>
-                <th>Name</th>
-                <th>Position</th>
-                <th>Goals</th>
-                <th>Assists</th>
-            </tr>
-        </thead>
-        <tbody id="rosterTableBody"></tbody>
-    </table>
+    <div id="rosterContainer">Select a team to view roster.</div>
 
     <script>
         document.getElementById('teamSelect').addEventListener('change', function() {
             const team = this.value;
-            fetch(`/roster/${team}`)
-                .then(response => response.json())
-                .then(data => {
-                    const tbody = document.getElementById('rosterTableBody');
-                    tbody.innerHTML = '';
-                    data.players.forEach(player => {
-                        const row = `<tr>
-                            <td>${player.number}</td>
-                            <td>${player.name}</td>
-                            <td>${player.position}</td>
-                            <td>${player.goals}</td>
-                            <td>${player.assists}</td>
-                        </tr>`;
-                        tbody.innerHTML += row;
-                    });
-                })
-                .catch(() => alert('Error loading roster.'));
-        });
+            const container = document.getElementById('rosterContainer');
+            container.innerHTML = 'Loading roster...';
 
-        // Trigger initial load
-        document.getElementById('teamSelect').dispatchEvent(new Event('change'));
+            if (team) {
+                fetch(`/roster/${team}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            container.innerHTML = data.error;
+                        } else {
+                            let table = `<table border="1">
+                                            <tr>
+                                                <th>#</th>
+                                                <th>Name</th>
+                                                <th>Position</th>
+                                                <th>Goals</th>
+                                                <th>Assists</th>
+                                            </tr>`;
+                            data.forEach(player => {
+                                table += `<tr>
+                                            <td>${player.number}</td>
+                                            <td>${player.name}</td>
+                                            <td>${player.position}</td>
+                                            <td>${player.goals}</td>
+                                            <td>${player.assists}</td>
+                                        </tr>`;
+                            });
+                            table += '</table>';
+                            container.innerHTML = table;
+                        }
+                    })
+                    .catch(err => {
+                        console.error(err);
+                        container.innerHTML = 'Error loading roster.';
+                    });
+            } else {
+                container.innerHTML = 'Select a team to view roster.';
+            }
+        });
     </script>
 </body>
 </html>
