@@ -6,7 +6,8 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return send_from_directory('.', 'index.html')
+    dir_path = os.path.dirname(os.path.realpath(__file__))
+    return send_from_directory(directory=dir_path, path='index.html')
 
 @app.route('/teams')
 def get_teams():
