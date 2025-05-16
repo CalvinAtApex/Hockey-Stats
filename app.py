@@ -1,82 +1,58 @@
-from flask import Flask, render_template, request, redirect, url_for, flash
-from flask_login import (
-    LoginManager,
-    login_user,
-    logout_user,
-    login_required,
-    UserMixin,
-    current_user,
-)
-import requests
+from flask import Flask
+from flask_sqlalchemy import SQLAlchemy
+from flask_security import Security, SQLAlchemyUserDatastore, hash_password
 
 app = Flask(__name__)
-app.secret_key = "your-secret-key"  # change this!
+app.config.update(
+    SECRET_KEY='…',
+    SQLALCHEMY_DATABASE_URI='sqlite:///users.db',
+    SECURITY_PASSWORD_SALT='…',
+)
 
-# ---- Flask-Login setup ----
-login_manager = LoginManager(app)
-login_manager.login_view = "login"
+db = SQLAlchemy(app)
 
-# very simple in-memory user store
-users = {
-    "admin": {"password": "password"},
-}
+# -- your models (simplified) -----------------------------------
+roles_users = db.Table(
+    'roles_users',
+    db.Column('user_id', db.Integer(), db.ForeignKey('user.id')),
+    db.Column('role_id', db.Integer(), db.ForeignKey('role.id'))
+)
 
-class User(UserMixin):
-    def __init__(self, username):
-        self.id = username
+class Role(db.Model):
+    id          = db.Column(db.Integer(), primary_key=True)
+    name        = db.Column(db.String(80), unique=True)
+    description = db.Column(db.String(255))
 
-@login_manager.user_loader
-def load_user(user_id):
-    if user_id in users:
-        return User(user_id)
-    return None
+class User(db.Model):
+    id               = db.Column(db.Integer, primary_key=True)
+    email            = db.Column(db.String(255), unique=True)
+    password         = db.Column(db.String(255))
+    active           = db.Column(db.Boolean())
+    fs_uniquifier    = db.Column(db.String(64), unique=True, nullable=False)
+    roles            = db.relationship('Role', secondary=roles_users, backref=db.backref('users', lazy='dynamic'))
+# --------------------------------------------------------------
 
-# ---- Authentication routes ----
-@app.route("/login", methods=["GET", "POST"])
-def login():
-    if request.method == "POST":
-        u = request.form["username"]
-        p = request.form["password"]
-        user = users.get(u)
-        if user and user["password"] == p:
-            login_user(User(u))
-            next_page = request.args.get("next") or url_for("index")
-            return redirect(next_page)
-        flash("Invalid username or password", "warning")
-    return render_template("login.html")
+# Set up Flask-Security
+user_datastore = SQLAlchemyUserDatastore(db, User, Role)
+security = Security(app, user_datastore)
 
-@app.route("/logout")
-@login_required
-def logout():
-    logout_user()
-    return redirect(url_for("login"))
+@app.before_first_request
+def create_admin_user():
+    db.create_all()
 
-# ---- Main app routes ----
-@app.route("/")
-@login_required
-def index():
-    return render_template("index.html")
+    # 1) Create 'admin' role if missing
+    if not user_datastore.find_role('admin'):
+        user_datastore.create_role(name='admin', description='Administrator')
 
-@app.route("/teams")
-@login_required
-def teams():
-    resp = requests.get("https://api-web.nhle.com/v1/standings/now")
-    data = resp.json()["standings"]
-    # Group by division
-    divs = {}
-    for t in data:
-        div = t["divisionAbbrev"]
-        divs.setdefault(div, []).append(t)
-    return render_template("teams.html", divisions=divs)
+    # 2) Create the admin user if missing
+    if not user_datastore.get_user('admin@example.com'):
+        user_datastore.create_user(
+            email='admin@example.com',
+            password=hash_password('ChangeMe123!'),
+            roles=['admin']
+        )
 
-@app.route("/roster/<abbr>")
-@login_required
-def roster(abbr):
-    resp = requests.get(f"https://api-web.nhle.com/v1/roster/{abbr}/current")
-    resp.raise_for_status()
-    data = resp.json()
-    players = data.get("forwards", []) + data.get("defensemen", []) + data.get("goalies", [])
-    return render_template("roster.html", players=players, team=abbr)
+    db.session.commit()
 
-if __name__ == "__main__":
-    app.run(debug=True)
+if __name__ == '__main__':
+    app.run()
