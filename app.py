@@ -11,15 +11,15 @@ def get_teams():
         data = response.json()
         teams = []
         for record in data['standings']:
-            team_info = record['team']
             teams.append({
-                'id': team_info['id'],
-                'name': team_info['fullName'],
-                'abbreviation': team_info['abbrev'],
-                'logo': f"https://assets.nhle.com/logos/nhl/svg/{team_info['abbrev']}_light.svg"
+                'id': record['teamId'],
+                'name': record['teamName'],
+                'abbreviation': record['teamAbbrev'],
+                'logo': record['teamLogo']
             })
         return teams
     return []
+
 
 # Get active players for a team
 def get_team_players(team_id):
