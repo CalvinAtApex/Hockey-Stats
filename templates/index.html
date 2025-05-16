@@ -5,34 +5,56 @@
     <title>NHL Team Stats</title>
     <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
     <style>
-        body { font-family: Arial, sans-serif; margin: 0; padding: 0; background: #f9f9f9; }
-        .navbar { background: #00205b; overflow: hidden; display: flex; align-items: center; padding: 0 10px; }
+        body { font-family: Arial, sans-serif; margin: 0; padding-top: 60px; background: #f9f9f9; }
+        .navbar {
+            position: fixed; top: 0; left: 0; width: 100%;
+            background: #00205b; color: white;
+            display: flex; align-items: center; padding: 0 10px;
+            z-index: 1000; height: 60px;
+        }
         .dropdown { position: relative; }
-        .dropbtn { color: white; padding: 14px 16px; background: none; border: none; cursor: pointer; font-size: 16px; }
-        .dropdown-content { display: none; position: absolute; background-color: #ffffff; min-width: 200px; z-index: 1; box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
-        .dropdown-content .team-link { color: black; padding: 10px; display: flex; align-items: center; cursor: pointer; }
-        .dropdown-content .team-link img { width: 20px; height: 20px; margin-right: 10px; }
+        .dropbtn {
+            color: white; padding: 14px 16px;
+            background: none; border: none;
+            cursor: pointer; font-size: 16px;
+        }
+        .dropdown-content {
+            display: none; position: absolute; top: 60px;
+            background: white; min-width: 200px;
+            z-index: 999; box-shadow: 0 8px 16px rgba(0,0,0,0.2);
+        }
+        .dropdown-content .team-link {
+            color: black; padding: 10px;
+            display: flex; align-items: center;
+            cursor: pointer;
+        }
+        .dropdown-content .team-link img {
+            width: 20px; height: 20px; margin-right: 10px;
+        }
         .dropdown:hover .dropdown-content { display: block; }
 
         /* Mobile Hamburger */
-        .hamburger { display: none; cursor: pointer; color: white; font-size: 24px; margin-left: auto; }
-        .mobile-menu { display: none; flex-direction: column; background: #00205b; }
-        .mobile-menu .dropdown { width: 100%; }
-        .mobile-menu .dropbtn { width: 100%; text-align: left; }
+        .hamburger { display: none; cursor: pointer; font-size: 24px; margin-left: auto; }
+        .mobile-menu { display: none; flex-direction: column; background: #00205b; position: fixed; top: 60px; width: 100%; z-index: 999; }
+        .mobile-menu.active { display: flex; }
+        .mobile-menu .dropdown-content { position: static; box-shadow: none; }
 
         @media (max-width: 768px) {
             .navbar > .dropdown { display: none; }
             .hamburger { display: block; }
-            .mobile-menu { display: none; }
-            .mobile-menu.active { display: flex; }
         }
 
         table { border-collapse: collapse; width: 100%; margin-top: 20px; }
         th, td { border: 1px solid #ccc; padding: 8px; text-align: left; }
-        th { background-color: #e0e0e0; }
+        th { background: #e0e0e0; }
         #roster-title { margin: 20px 0 10px 0; font-size: 20px; }
 
-        .spinner { display: none; margin: 20px auto; border: 8px solid #f3f3f3; border-top: 8px solid #00205b; border-radius: 50%; width: 50px; height: 50px; animation: spin 1s linear infinite; }
+        .spinner {
+            display: none; margin: 20px auto;
+            border: 8px solid #f3f3f3; border-top: 8px solid #00205b;
+            border-radius: 50%; width: 50px; height: 50px;
+            animation: spin 1s linear infinite;
+        }
         @keyframes spin { 100% { transform: rotate(360deg); } }
     </style>
 </head>
@@ -91,8 +113,8 @@ $(document).ready(function() {
             else if (['ANA','CGY','EDM','LAK','SEA','SJS','VAN','VGK'].includes(abbrev)) divisions['Pacific'].push(team);
         });
 
-        buildDropdowns($('.dropdowns'));   // Desktop navbar
-        buildDropdowns($('.mobile-menu')); // Mobile menu
+        buildDropdowns($('.dropdowns'));   // Desktop
+        buildDropdowns($('.mobile-menu')); // Mobile
 
         $(document).on('click', '.team-link', function() {
             const abbrev = $(this).data('abbrev');
