@@ -34,8 +34,8 @@
             select.innerHTML = `<option value="">Select a team</option>`;
 
             data.forEach(team => {
-                const abbrev = team.abbrev || team.teamAbbrev || "";
-                const name = team.name || team.fullName || team.commonName || abbrev;
+                const abbrev = team.teamAbbrev;
+                const name = team.teamName?.default || team.fullTeamName?.default || abbrev;
 
                 if (!abbrev || !name) {
                     console.warn("Skipping team with missing data", team);
