@@ -38,19 +38,25 @@ def roster(team_abbrev):
         for p in roster_json.get(group, []):
             pid = p['id']
             summ = requests.get(f'https://api-web.nhle.com/v1/player/{pid}/landing').json()
-            fs  = summ['featuredStats']
-            rs  = fs['regularSeason']['subSeason']
-            po  = fs['playoffs']['subSeason']
+            fs = summ.get('featuredStats', {})
+            # current season regular
+            rs = fs.get('regularSeason', {}).get('subSeason', {})
+            # current season playoffs
+            po = fs.get('playoffs', {}).get('subSeason', {})
+
             players.append({
+                'headshot': p.get('headshot'),
                 'name': f"{p['firstName']['default']} {p['lastName']['default']}",
-                'position': p['positionCode'],
-                'gamesPlayed': rs['gamesPlayed'],
-                'goals': rs['goals'],
-                'assists': rs['assists'],
-                'points': rs['points'],
-                'playoffGoals': po['goals'],
-                'playoffAssists': po['assists'],
-                'playoffPoints': po['points'],
+                'number': p.get('sweaterNumber'),
+                'position': p.get('positionCode'),
+                'games':       rs.get('gamesPlayed', 0),
+                'goals':       rs.get('goals',       0),
+                'assists':     rs.get('assists',     0),
+                'points':      rs.get('points',      0),
+                'playoffGames':   po.get('gamesPlayed', 0),
+                'playoffGoals':   po.get('goals',       0),
+                'playoffAssists': po.get('assists',     0),
+                'playoffPoints':  po.get('points',      0),
             })
 
     # 3) look up the team’s logo from the same standings feed
