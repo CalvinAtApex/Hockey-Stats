@@ -1,27 +1,50 @@
- from flask import Flask, render_template, jsonify
- import requests
+from flask import Flask, render_template, jsonify
+import requests
 
- app = Flask(__name__)
+app = Flask(__name__)
 
- @app.route('/roster/<team>')
- def roster(team):
-     # … your existing code to fetch the roster list …
-     return render_template('index.html',
-                             players=players,
-                             teamAbbrev=team)
+@app.route('/roster/<team>')
+def roster(team):
+    """
+    Render the main roster page, passing the list of players
+    (forwards + defensemen + goalies) and the team abbreviation.
+    """
+    resp = requests.get(f'https://api-web.nhle.com/v1/roster/{team}/current')
+    resp.raise_for_status()
+    data = resp.json()
 
-# New endpoint to return only the featuredStats subSeason objects
+    players = data.get('forwards', []) \
+            + data.get('defensemen', []) \
+            + data.get('goalies', [])
+
+    return render_template('index.html',
+                           players=players,
+                           teamAbbrev=team)
+
+
 @app.route('/api/player_stats/<team>')
 def player_stats(team):
-    # 1) fetch the roster
-    r = requests.get(f'https://api-web.nhle.com/v1/roster/{team}/current').json()
-    all_players = r.get('forwards', []) + r.get('defensemen', []) + r.get('goalies', [])
+    """
+    Returns a JSON map of player_id → { regularSeason: {...}, playoffs: {...} }
+    containing only gamesPlayed, goals, assists, points for each.
+    """
+    # 1) Fetch roster
+    resp = requests.get(f'https://api-web.nhle.com/v1/roster/{team}/current')
+    resp.raise_for_status()
+    roster = resp.json()
+
+    all_players = roster.get('forwards', []) \
+                + roster.get('defensemen', []) \
+                + roster.get('goalies', [])
 
     stats_map = {}
     for p in all_players:
         pid = p['id']
-        landing = requests.get(f'https://api-web.nhle.com/v1/player/{pid}/landing').json()
-        fs = landing.get('featuredStats', {})
+        # 2) Fetch landing (featuredStats)
+        landing = requests.get(f'https://api-web.nhle.com/v1/player/{pid}/landing')
+        if landing.status_code != 200:
+            continue
+        fs = landing.json().get('featuredStats', {})
 
         regular = fs.get('regularSeason', {}).get('subSeason', {})
         playoffs = fs.get('playoffs', {}).get('subSeason', {})
@@ -42,6 +65,12 @@ def player_stats(team):
         }
 
     return jsonify(stats_map)
+
+
+if __name__ == '__main__':
+    # only for local dev; gunicorn will ignore this block
+    app.run(host='0.0.0.0', port=5000, debug=True)
+
 
 
 
