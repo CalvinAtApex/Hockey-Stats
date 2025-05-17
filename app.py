@@ -1,10 +1,12 @@
 from flask import Flask, render_template, jsonify
 import requests
-app = Flask(__name__)
-@app.route('/')
 
+app = Flask(__name__)
+
+@app.route('/')
 def index():
     return render_template('index.html')
+
 @app.route('/teams')
 def teams():
     # Fetch the current standings/teams
@@ -21,7 +23,9 @@ def teams():
             'name': t['teamCommonName']['default'],
             'logo': t['teamLogo']
         })
+
     return jsonify(divisions)
+
 @app.route('/roster/<team_abbrev>')
 def roster(team_abbrev):
     # 1) fetch the raw roster
@@ -35,14 +39,12 @@ def roster(team_abbrev):
             pid = p['id']
             summ = requests.get(f'https://api-web.nhle.com/v1/player/{pid}/landing').json()
             fs = summ.get('featuredStats', {})
-
             # current season regular
             rs = fs.get('regularSeason', {}).get('subSeason', {})
-
             # current season playoffs
             po = fs.get('playoffs', {}).get('subSeason', {})
 
-           players.append({
+            players.append({
                 'headshot': p.get('headshot'),
                 'name': f"{p['firstName']['default']} {p['lastName']['default']}",
                 'number': p.get('sweaterNumber'),
@@ -55,12 +57,15 @@ def roster(team_abbrev):
                 'playoffGoals':   po.get('goals',       0),
                 'playoffAssists': po.get('assists',     0),
                 'playoffPoints':  po.get('points',      0),
-           })
+            })
+
     # 3) look up the team’s logo from the same standings feed
     std = requests.get('https://api-web.nhle.com/v1/standings/now').json().get('standings', [])
     logo = next((t['teamLogo']
                  for t in std
                  if t['teamAbbrev']['default'] == team_abbrev), '')
+
     return jsonify({ 'logo': logo, 'players': players })
+
 if __name__ == '__main__':
     app.run(debug=True)
