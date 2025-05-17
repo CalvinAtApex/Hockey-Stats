@@ -1,3 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <!-- bootstrap CSS + meta… -->
+</head>
+<body>
+  <div class="container">
+    <h1>Roster: {{ teamAbbrev }}</h1>
+    <table class="table table-striped" id="roster-table">
+      <thead>
+        <tr>
+          <th>Name</th>
+          <th>Pos</th>
+          <th>GP</th>
+          <th>G</th>
+          <th>A</th>
+          <th>P</th>
+          <th>PGP</th>
+          <th>PG</th>
+          <th>PA</th>
+          <th>PP</th>
+        </tr>
+      </thead>
+      <tbody>
+      {% for p in players %}
+        <tr data-player-id="{{ p.id }}">
+          <td>{{ p.firstName.default }} {{ p.lastName.default }}</td>
+          <td>{{ p.positionCode }}</td>
+          {% for col in ['gp','g','a','p','pgp','pg','pa','pp'] %}
+            <td class="{{ col }}">
+              <div class="spinner-border spinner-border-sm text-secondary" role="status">
+                <span class="visually-hidden">Loading…</span>
+              </div>
+            </td>
+          {% endfor %}
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  <!-- bootstrap JS + fetch polyfill if you need to support old browsers… -->
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      fetch(`/api/player_stats/{{ teamAbbrev }}`)
+        .then(res => res.json())
+        .then(data => {
+          Object.entries(data).forEach(([id, stats]) => {
+            const row = document.querySelector(`tr[data-player-id="${id}"]`);
+            if (!row) return;
+
+            row.querySelector('.gp').textContent  = stats.regularSeason.gamesPlayed;
+            row.querySelector('.g').textContent   = stats.regularSeason.goals;
+            row.querySelector('.a').textContent   = stats.regularSeason.assists;
+            row.querySelector('.p').textContent   = stats.regularSeason.points;
+
+            row.querySelector('.pgp').textContent = stats.playoffs.gamesPlayed;
+            row.querySelector('.pg').textContent  = stats.playoffs.goals;
+            row.querySelector('.pa').textContent  = stats.playoffs.assists;
+            row.querySelector('.pp').textContent  = stats.playoffs.points;
+          });
+        })
+        .catch(err => console.error('Stats load failed', err));
+    });
+  </script>
+</body>
+</html>
+
+
+<!--
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -10,13 +80,10 @@
 <body>
   <div class="container py-4">
 
-    <!-- division/team nav (unchanged) -->
     <nav id="divisions-nav" class="mb-4"></nav>
 
-    <!-- team logo, centered above the table -->
     <div id="team-logo" class="text-center mb-3"></div>
 
-    <!-- player stats table -->
     <table class="table table-striped">
       <thead>
         <tr>
@@ -92,3 +159,4 @@
   </script>
 </body>
 </html>
+-->
