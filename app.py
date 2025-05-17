@@ -1,3 +1,52 @@
+ from flask import Flask, render_template, jsonify
+ import requests
+
+ app = Flask(__name__)
+
+ @app.route('/roster/<team>')
+ def roster(team):
+     # … your existing code to fetch the roster list …
+     return render_template('index.html',
+                             players=players,
+                             teamAbbrev=team)
+
+# New endpoint to return only the featuredStats subSeason objects
+@app.route('/api/player_stats/<team>')
+def player_stats(team):
+    # 1) fetch the roster
+    r = requests.get(f'https://api-web.nhle.com/v1/roster/{team}/current').json()
+    all_players = r.get('forwards', []) + r.get('defensemen', []) + r.get('goalies', [])
+
+    stats_map = {}
+    for p in all_players:
+        pid = p['id']
+        landing = requests.get(f'https://api-web.nhle.com/v1/player/{pid}/landing').json()
+        fs = landing.get('featuredStats', {})
+
+        regular = fs.get('regularSeason', {}).get('subSeason', {})
+        playoffs = fs.get('playoffs', {}).get('subSeason', {})
+
+        stats_map[pid] = {
+            'regularSeason': {
+                'gamesPlayed': regular.get('gamesPlayed', 0),
+                'goals':       regular.get('goals', 0),
+                'assists':     regular.get('assists', 0),
+                'points':      regular.get('points', 0),
+            },
+            'playoffs': {
+                'gamesPlayed': playoffs.get('gamesPlayed', 0),
+                'goals':       playoffs.get('goals', 0),
+                'assists':     playoffs.get('assists', 0),
+                'points':      playoffs.get('points', 0),
+            },
+        }
+
+    return jsonify(stats_map)
+
+
+
+'''
+
 from flask import Flask, render_template, jsonify
 import requests
 
@@ -69,3 +118,4 @@ def roster(team_abbrev):
 
 if __name__ == '__main__':
     app.run(debug=True)
+'''
