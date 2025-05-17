@@ -17,7 +17,7 @@ def teams():
     # Group teams by divisionAbbrev (now a simple string in the response)
     divisions = {}
     for t in standings:
-        div = t['divisionAbbrev']  # API now returns this as a string
+        div = t['divisionName']  # API now returns this as a string
         divisions.setdefault(div, []).append({
             'abbrev': t['teamAbbrev']['default'],
             'name': t['teamCommonName']['default'],
