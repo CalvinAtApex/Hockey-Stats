@@ -1,54 +1,66 @@
-from flask import Flask, render_template, redirect
+from flask import Flask, render_template, jsonify
 import requests
-
 app = Flask(__name__)
-
-# load divisions once per request so your base.html can use them
-@app.context_processor
-def inject_divisions():
-    resp = requests.get('https://api-web.nhle.com/v1/teams/current')
-    resp.raise_for_status()
-    teams = resp.json().get('teams', [])
-    divisions = {}
-    for t in teams:
-        div = t.get('divisionAbbrev', 'Unknown')
-        divisions.setdefault(div, []).append(t)
-    return dict(divisions=divisions)
-
 @app.route('/')
-def home():
-    # auto-redirect to Capitals by default
-    return redirect('/roster/WSH')
 
+def index():
+    return render_template('index.html')
 @app.route('/teams')
 def teams():
-    # this page simply lists all divisions → teams
-    return render_template('teams.html')
+    # Fetch the current standings/teams
+    resp = requests.get('https://api-web.nhle.com/v1/standings/now')
+    data = resp.json()
+    standings = data.get('standings', [])
 
+    # Group teams by divisionAbbrev (now a simple string in the response)
+    divisions = {}
+    for t in standings:
+        div = t['divisionName']  # API now returns this as a string
+        divisions.setdefault(div, []).append({
+            'abbrev': t['teamAbbrev']['default'],
+            'name': t['teamCommonName']['default'],
+            'logo': t['teamLogo']
+        })
+    return jsonify(divisions)
 @app.route('/roster/<team_abbrev>')
 def roster(team_abbrev):
-    # 1) fetch the roster
+    # 1) fetch the raw roster
     r = requests.get(f'https://api-web.nhle.com/v1/roster/{team_abbrev}/current')
-    r.raise_for_status()
-    data = r.json()
+    roster_json = r.json()
     players = []
-    for grp in ('forwards','defensemen','goalies'):
-        players.extend(data.get(grp, []))
 
-    # 2) fetch team logo via one player's landing endpoint
-    if players:
-        pid = players[0]['id']
-        l = requests.get(f'https://api-web.nhle.com/v1/player/{pid}/landing')
-        l.raise_for_status()
-        team_logo = l.json().get('teamLogo','')
-    else:
-        team_logo = ''
+    # 2) for each skater, fetch landing/stats and pluck current-season + playoff
+    for group in ('forwards', 'defensemen', 'goalies'):
+        for p in roster_json.get(group, []):
+            pid = p['id']
+            summ = requests.get(f'https://api-web.nhle.com/v1/player/{pid}/landing').json()
+            fs = summ.get('featuredStats', {})
 
-    return render_template('index.html',
-        players=players,
-        team_logo=team_logo,
-        team_abbrev=team_abbrev
-    )
+            # current season regular
+            rs = fs.get('regularSeason', {}).get('subSeason', {})
 
+            # current season playoffs
+            po = fs.get('playoffs', {}).get('subSeason', {})
+
+           players.append({
+                'headshot': p.get('headshot'),
+                'name': f"{p['firstName']['default']} {p['lastName']['default']}",
+                'number': p.get('sweaterNumber'),
+                'position': p.get('positionCode'),
+                'gamesPlayed':       rs.get('gamesPlayed', 0),
+                'goals':       rs.get('goals',       0),
+                'assists':     rs.get('assists',     0),
+                'points':      rs.get('points',      0),
+                'playoffGames':   po.get('gamesPlayed', 0),
+                'playoffGoals':   po.get('goals',       0),
+                'playoffAssists': po.get('assists',     0),
+                'playoffPoints':  po.get('points',      0),
+           })
+    # 3) look up the team’s logo from the same standings feed
+    std = requests.get('https://api-web.nhle.com/v1/standings/now').json().get('standings', [])
+    logo = next((t['teamLogo']
+                 for t in std
+                 if t['teamAbbrev']['default'] == team_abbrev), '')
+    return jsonify({ 'logo': logo, 'players': players })
 if __name__ == '__main__':
     app.run(debug=True)
