@@ -49,7 +49,7 @@ def roster(team_abbrev):
                 'name': f"{p['firstName']['default']} {p['lastName']['default']}",
                 'number': p.get('sweaterNumber'),
                 'position': p.get('positionCode'),
-                'games':       rs.get('gamesPlayed', 0),
+                'gamesPlayed':       rs.get('gamesPlayed', 0),
                 'goals':       rs.get('goals',       0),
                 'assists':     rs.get('assists',     0),
                 'points':      rs.get('points',      0),
