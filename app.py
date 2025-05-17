@@ -1,14 +1,15 @@
-from flask import Flask, render_template, jsonify
+from flask import Flask, render_template, jsonify, redirect
 import requests
 
 app = Flask(__name__)
 
+@app.route('/')
+def index():
+    # redirect the root URL to your default team roster
+    return redirect('/roster/WSH')
+
 @app.route('/roster/<team>')
 def roster(team):
-    """
-    Render the main roster page, passing the list of players
-    (forwards + defensemen + goalies) and the team abbreviation.
-    """
     resp = requests.get(f'https://api-web.nhle.com/v1/roster/{team}/current')
     resp.raise_for_status()
     data = resp.json()
@@ -24,11 +25,6 @@ def roster(team):
 
 @app.route('/api/player_stats/<team>')
 def player_stats(team):
-    """
-    Returns a JSON map of player_id → { regularSeason: {...}, playoffs: {...} }
-    containing only gamesPlayed, goals, assists, points for each.
-    """
-    # 1) Fetch roster
     resp = requests.get(f'https://api-web.nhle.com/v1/roster/{team}/current')
     resp.raise_for_status()
     roster = resp.json()
@@ -40,7 +36,6 @@ def player_stats(team):
     stats_map = {}
     for p in all_players:
         pid = p['id']
-        # 2) Fetch landing (featuredStats)
         landing = requests.get(f'https://api-web.nhle.com/v1/player/{pid}/landing')
         if landing.status_code != 200:
             continue
@@ -68,83 +63,4 @@ def player_stats(team):
 
 
 if __name__ == '__main__':
-    # only for local dev; gunicorn will ignore this block
     app.run(host='0.0.0.0', port=5000, debug=True)
-
-
-
-
-'''
-
-from flask import Flask, render_template, jsonify
-import requests
-
-app = Flask(__name__)
-
-@app.route('/')
-def index():
-    return render_template('index.html')
-
-@app.route('/teams')
-def teams():
-    # Fetch the current standings/teams
-    resp = requests.get('https://api-web.nhle.com/v1/standings/now')
-    data = resp.json()
-    standings = data.get('standings', [])
-
-    # Group teams by divisionAbbrev (now a simple string in the response)
-    divisions = {}
-    for t in standings:
-        div = t['divisionName']  # API now returns this as a string
-        divisions.setdefault(div, []).append({
-            'abbrev': t['teamAbbrev']['default'],
-            'name': t['teamCommonName']['default'],
-            'logo': t['teamLogo']
-        })
-
-    return jsonify(divisions)
-
-@app.route('/roster/<team_abbrev>')
-def roster(team_abbrev):
-    # 1) fetch the raw roster
-    r = requests.get(f'https://api-web.nhle.com/v1/roster/{team_abbrev}/current')
-    roster_json = r.json()
-    players = []
-
-    # 2) for each skater, fetch landing/stats and pluck current-season + playoff
-    for group in ('forwards', 'defensemen', 'goalies'):
-        for p in roster_json.get(group, []):
-            pid = p['id']
-            summ = requests.get(f'https://api-web.nhle.com/v1/player/{pid}/landing').json()
-            fs = summ.get('featuredStats', {})
-            # current season regular
-            rs = fs.get('regularSeason', {}).get('subSeason', {})
-            # current season playoffs
-            po = fs.get('playoffs', {}).get('subSeason', {})
-
-            players.append({
-                'headshot': p.get('headshot'),
-                'name': f"{p['firstName']['default']} {p['lastName']['default']}",
-                'number': p.get('sweaterNumber'),
-                'position': p.get('positionCode'),
-                'gamesPlayed':       rs.get('gamesPlayed', 0),
-                'goals':       rs.get('goals',       0),
-                'assists':     rs.get('assists',     0),
-                'points':      rs.get('points',      0),
-                'playoffGames':   po.get('gamesPlayed', 0),
-                'playoffGoals':   po.get('goals',       0),
-                'playoffAssists': po.get('assists',     0),
-                'playoffPoints':  po.get('points',      0),
-            })
-
-    # 3) look up the team’s logo from the same standings feed
-    std = requests.get('https://api-web.nhle.com/v1/standings/now').json().get('standings', [])
-    logo = next((t['teamLogo']
-                 for t in std
-                 if t['teamAbbrev']['default'] == team_abbrev), '')
-
-    return jsonify({ 'logo': logo, 'players': players })
-
-if __name__ == '__main__':
-    app.run(debug=True)
-'''
