@@ -1,39 +1,4 @@
-{% extends 'base.html' %}
 
-{% block content %}
-  <!-- team logo centered -->
-  <div class="text-center mb-4">
-    <img
-      src="{{ team_logo }}"
-      alt="{{ team_abbrev }} logo"
-      class="img-fluid"
-      style="max-height: 120px;"
-    >
-  </div>
-
-  <h3 class="mb-3">Roster: {{ team_abbrev }}</h3>
-  <table class="table table-striped">
-    <thead class="thead-light">
-      <tr>
-        <th>#</th>
-        <th>Name</th>
-        <th>Position</th>
-      </tr>
-    </thead>
-    <tbody>
-      {% for p in players %}
-        <tr>
-          <td>{{ p.sweaterNumber }}</td>
-          <td>{{ p.firstName.default }} {{ p.lastName.default }}</td>
-          <td>{{ p.positionCode }}</td>
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
-{% endblock %}
-
-
-<!--
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -125,4 +90,3 @@
   </script>
 </body>
 </html>
--->
