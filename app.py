@@ -6,6 +6,8 @@ import requests
 app = Flask(__name__)
 
 # ─── SECURITY / OAUTH CONFIG ─────────────────────────────────────────────────
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['DATABASE_URL']
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 app.secret_key = os.environ.get('SECRET_KEY', 'dev-secret')  # override via env
 
 # initialize Authlib
