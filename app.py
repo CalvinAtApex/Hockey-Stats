@@ -1,4 +1,5 @@
 from flask import Flask, render_template, jsonify
+from flask import Response
 import requests
 
 app = Flask(__name__)
@@ -69,3 +70,8 @@ def roster(team_abbrev):
 
 if __name__ == '__main__':
     app.run(debug=True)
+
+@app.route('/robots.txt')
+def robots_txt():
+    return Response("User-agent: *\nDisallow:\n", mimetype="text/plain")
+
