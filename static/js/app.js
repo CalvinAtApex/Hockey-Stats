@@ -3,7 +3,6 @@ document.addEventListener('DOMContentLoaded', () => {
   const loader         = document.getElementById('stats-loader');
   const statsContainer = document.getElementById('stats-container');
 
-  // Adapt this to your own data‐structure if needed
   function renderStatsTable(data) {
     let html = `
       <table>
@@ -30,7 +29,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   teamSelect.addEventListener('change', async (e) => {
     const team = e.target.value;
-    // clear old stats & show spinner
+    // clear out old stats and show spinner
     statsContainer.innerHTML = '';
     loader.style.display = 'block';
 
@@ -45,4 +44,7 @@ document.addEventListener('DOMContentLoaded', () => {
       console.error(err);
     }
   });
+
+  // trigger initial load if you want a default team:
+  // teamSelect.dispatchEvent(new Event('change'));
 });
