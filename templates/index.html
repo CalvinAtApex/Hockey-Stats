@@ -1,125 +1,106 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Hockey Stats</title>
-  <link
-    href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css"
-    rel="stylesheet">
+  <meta charset="UTF-8" />
+  <title>Hockey Roster</title>
 
-  <!-- ─── INLINE SPINNER CSS ─────────────────────────────────────────────────── -->
+  <!-- DataTables core CSS -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css"
+  />
+  <!-- Buttons (for ColVis) -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.dataTables.min.css"
+  />
+  <!-- ColReorder -->
+  <link
+    rel="stylesheet"
+    href="https://cdn.datatables.net/colreorder/1.6.2/css/colReorder.dataTables.min.css"
+  />
+
+  <!-- jQuery + DataTables + Extensions JS -->
+  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+  <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
+  <script src="https://cdn.datatables.net/colreorder/1.6.2/js/dataTables.colReorder.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
+  <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.colVis.min.js"></script>
+
   <style>
-    .loader {
-      border: 6px solid rgba(0,0,0,0.1);
-      border-top: 6px solid #3498db;
-      border-radius: 50%;
-      width: 40px;
-      height: 40px;
-      animation: spin 0.8s linear infinite;
-      margin: 20px auto;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
+    body { font-family: sans-serif; padding: 1rem; }
+    #team-select { margin-bottom: 1rem; }
   </style>
-  <!-- ────────────────────────────────────────────────────────────────────────── -->
 </head>
 <body>
-  <div class="container py-4">
+  <h1>Hockey Roster</h1>
 
-    <nav id="divisions-nav" class="mb-4"></nav>
+  <label for="team-select">Select a team:</label>
+  <select id="team-select"></select>
 
-    <!-- team logo -->
-    <div id="team-logo" class="text-center mb-3"></div>
-
-    <!-- loading spinner (hidden until roster loads) -->
-    <div id="loading-spinner" class="loader" style="display: none;"></div>
-
-    <table class="table table-striped">
-      <thead>
-        <tr>
-          <th>#</th>
-          <th>Name</th>
-          <th>Pos</th>
-          <th>GP</th>
-          <th>G</th>
-          <th>A</th>
-          <th>P</th>
-          <th>Playoff G</th>
-          <th>Playoff A</th>
-          <th>Playoff P</th>
-        </tr>
-      </thead>
-      <tbody id="stats-body"></tbody>
-    </table>
-  </div>
+  <table id="statsTable" class="display" style="width:100%">
+    <thead>
+      <tr>
+        <th>Name</th>
+        <th>#</th>
+        <th>Pos</th>
+        <th>GP</th>
+        <th>G</th>
+        <th>A</th>
+        <th>P</th>
+        <th>Playoff GP</th>
+        <th>Playoff G</th>
+        <th>Playoff A</th>
+        <th>Playoff P</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
 
   <script>
-    // load divisions and teams into a simple nav
-    fetch('/teams')
-      .then(r=>r.json())
-      .then(divs=>{
-        const nav = document.getElementById('divisions-nav');
-        for(const [div, teams] of Object.entries(divs)){
-          const btn = document.createElement('div');
-          btn.className = 'btn-group me-2';
-          btn.innerHTML = `
-            <button type="button" class="btn btn-outline-primary dropdown-toggle" 
-                    data-bs-toggle="dropdown">${div}</button>
-            <ul class="dropdown-menu">
-              ${teams.map(t=>`<li><a class="dropdown-item" href="#" 
-                   onclick="loadRoster('${t.abbrev}')">
-                   <img src="${t.logo}" width="20" class="me-1">${t.name}
-                   </a></li>`).join('')}
-            </ul>`;
-          nav.appendChild(btn);
-        }
+    $(document).ready(function() {
+      // Initialize empty DataTable
+      const table = $('#statsTable').DataTable({
+        data: [],
+        columns: [
+          { data: 'name' },
+          { data: 'number' },
+          { data: 'position' },
+          { data: 'gamesPlayed' },
+          { data: 'goals' },
+          { data: 'assists' },
+          { data: 'points' },
+          { data: 'playoffGames' },
+          { data: 'playoffGoals' },
+          { data: 'playoffAssists' },
+          { data: 'playoffPoints' }
+        ],
+        colReorder: true,
+        stateSave: true,
+        dom: 'Bfrtip',
+        buttons: ['colvis']
       });
 
-    function loadRoster(abbrev){
-      const spinner = document.getElementById('loading-spinner');
-      const logoDiv = document.getElementById('team-logo');
-      const body    = document.getElementById('stats-body');
-
-      // show spinner & clear old content
-      spinner.style.display = 'block';
-      logoDiv.innerHTML     = '';
-      body.innerHTML        = '';
-
-      fetch(`/roster/${abbrev}`)
-        .then(r=>r.json())
-        .then(data=>{
-          // hide spinner
-          spinner.style.display = 'none';
-
-          // show team logo
-          logoDiv.innerHTML =
-            `<img src="${data.logo}" class="img-fluid" style="max-height:120px;">`;
-
-          // fill table
-          data.players.forEach((p,i)=>{
-            const tr = document.createElement('tr');
-            tr.innerHTML = `
-              <td>${p.number}</td>
-              <td>${p.name}</td>
-              <td>${p.position}</td>
-              <td>${p.gamesPlayed}</td>
-              <td>${p.goals}</td>
-              <td>${p.assists}</td>
-              <td>${p.points}</td>
-              <td>${p.playoffGoals}</td>
-              <td>${p.playoffAssists}</td>
-              <td>${p.playoffPoints}</td>`;
-            body.appendChild(tr);
-          });
-        })
-        .catch(err=>{
-          // hide spinner on error
-          spinner.style.display = 'none';
-          console.error(err);
+      // Load teams into the <select>
+      $.getJSON('/teams', function(divisions) {
+        const $sel = $('#team-select');
+        // flatten all divisions into one array
+        const teams = Object.values(divisions).flat();
+        teams.forEach(t => {
+          $sel.append(new Option(t.name, t.abbrev));
         });
-    }
-  </script>
+        // trigger load for the first team
+        $sel.val(teams[0]?.abbrev).trigger('change');
+      });
 
-  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js">
+      // On team change, fetch its roster and reload the table
+      $('#team-select').on('change', function() {
+        const abbr = this.value;
+        $.getJSON(`/roster/${abbr}`, function(res) {
+          table.clear().rows.add(res.players).draw();
+        });
+      });
+    });
   </script>
 </body>
 </html>
