@@ -2,104 +2,102 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Hockey Roster</title>
+  <title>All NHL Rosters</title>
 
-  <!-- DataTables core CSS -->
+  <!-- Tabulator CSS -->
   <link
+    href="https://unpkg.com/tabulator-tables@5.5.3/dist/css/tabulator.min.css"
     rel="stylesheet"
-    href="https://cdn.datatables.net/1.13.4/css/jquery.dataTables.min.css"
   />
-  <!-- Buttons (for ColVis) -->
-  <link
-    rel="stylesheet"
-    href="https://cdn.datatables.net/buttons/2.3.6/css/buttons.dataTables.min.css"
-  />
-  <!-- ColReorder -->
-  <link
-    rel="stylesheet"
-    href="https://cdn.datatables.net/colreorder/1.6.2/css/colReorder.dataTables.min.css"
-  />
-
-  <!-- jQuery + DataTables + Extensions JS -->
-  <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-  <script src="https://cdn.datatables.net/1.13.4/js/jquery.dataTables.min.js"></script>
-  <script src="https://cdn.datatables.net/colreorder/1.6.2/js/dataTables.colReorder.min.js"></script>
-  <script src="https://cdn.datatables.net/buttons/2.3.6/js/dataTables.buttons.min.js"></script>
-  <script src="https://cdn.datatables.net/buttons/2.3.6/js/buttons.colVis.min.js"></script>
 
   <style>
-    body { font-family: sans-serif; padding: 1rem; }
-    #team-select { margin-bottom: 1rem; }
+    body {
+      font-family: sans-serif;
+      padding: 1rem;
+    }
+    #controls {
+      margin-bottom: 1rem;
+    }
+    #stats-table {
+      margin-top: 0.5rem;
+    }
   </style>
 </head>
 <body>
-  <h1>Hockey Roster</h1>
+  <h1>All NHL Rosters</h1>
 
-  <label for="team-select">Select a team:</label>
-  <select id="team-select"></select>
+  <div id="controls">
+    <button id="add-col-btn">Add Your Own Column</button>
+  </div>
 
-  <table id="statsTable" class="display" style="width:100%">
-    <thead>
-      <tr>
-        <th>Name</th>
-        <th>#</th>
-        <th>Pos</th>
-        <th>GP</th>
-        <th>G</th>
-        <th>A</th>
-        <th>P</th>
-        <th>Playoff GP</th>
-        <th>Playoff G</th>
-        <th>Playoff A</th>
-        <th>Playoff P</th>
-      </tr>
-    </thead>
-    <tbody></tbody>
-  </table>
+  <div id="stats-table"></div>
+
+  <!-- Tabulator JS -->
+  <script src="https://unpkg.com/tabulator-tables@5.5.3/dist/js/tabulator.min.js"></script>
 
   <script>
-    $(document).ready(function() {
-      // Initialize empty DataTable
-      const table = $('#statsTable').DataTable({
-        data: [],
-        columns: [
-          { data: 'name' },
-          { data: 'number' },
-          { data: 'position' },
-          { data: 'gamesPlayed' },
-          { data: 'goals' },
-          { data: 'assists' },
-          { data: 'points' },
-          { data: 'playoffGames' },
-          { data: 'playoffGoals' },
-          { data: 'playoffAssists' },
-          { data: 'playoffPoints' }
-        ],
-        colReorder: true,
-        stateSave: true,
-        dom: 'Bfrtip',
-        buttons: ['colvis']
-      });
+    document.addEventListener('DOMContentLoaded', () => {
+      // 1) Fetch all teams
+      fetch('/teams')
+        .then(res => res.json())
+        .then(divisions => {
+          const teams = Object.values(divisions).flat();
 
-      // Load teams into the <select>
-      $.getJSON('/teams', function(divisions) {
-        const $sel = $('#team-select');
-        // flatten all divisions into one array
-        const teams = Object.values(divisions).flat();
-        teams.forEach(t => {
-          $sel.append(new Option(t.name, t.abbrev));
-        });
-        // trigger load for the first team
-        $sel.val(teams[0]?.abbrev).trigger('change');
-      });
+          // 2) Fetch each roster in parallel, tagging each player with teamName
+          const rosterPromises = teams.map(team =>
+            fetch(`/roster/${team.abbrev}`)
+              .then(r => r.json())
+              .then(({ players }) =>
+                players.map(p => ({ ...p, teamName: team.name }))
+              )
+          );
 
-      // On team change, fetch its roster and reload the table
-      $('#team-select').on('change', function() {
-        const abbr = this.value;
-        $.getJSON(`/roster/${abbr}`, function(res) {
-          table.clear().rows.add(res.players).draw();
+          Promise.all(rosterPromises).then(arrays => {
+            const allPlayers = arrays.flat();
+
+            // 3) Define columns (including the new teamName field up front)
+            const baseCols = [
+              { title: "Team",      field: "teamName",     headerFilter: "input" },
+              { title: "Name",      field: "name",         headerFilter: "input", editor: "input" },
+              { title: "#",         field: "number",       headerFilter: "input", editor: "input" },
+              { title: "Pos",       field: "position",     headerFilter: "input", editor: "input" },
+              { title: "GP",        field: "gamesPlayed",  headerFilter: "input", editor: "input" },
+              { title: "G",         field: "goals",        headerFilter: "input", editor: "input" },
+              { title: "A",         field: "assists",      headerFilter: "input", editor: "input" },
+              { title: "P",         field: "points",       headerFilter: "input", editor: "input" },
+              { title: "Playoff GP",field: "playoffGames", headerFilter: "input", editor: "input" },
+              { title: "Playoff G", field: "playoffGoals", headerFilter: "input", editor: "input" },
+              { title: "Playoff A", field: "playoffAssists",headerFilter: "input", editor: "input" },
+              { title: "Playoff P", field: "playoffPoints", headerFilter: "input", editor: "input" },
+            ];
+
+            // 4) Instantiate Tabulator with grouping by teamName
+            const table = new Tabulator("#stats-table", {
+              data: allPlayers,
+              layout: "fitDataStretch",
+              columns: baseCols,
+              movableColumns: true,
+              persistence: {
+                columns: true,
+                sort:    true,
+                filter:  true,
+              },
+              groupBy: "teamName",
+              groupHeader: (value, count) => `${value} (${count} players)`,
+            });
+
+            // 5) “Add Your Own Column” button
+            document.getElementById('add-col-btn').addEventListener('click', () => {
+              const title = prompt("Enter new column title:");
+              if (!title) return;
+              const field = title.replace(/\s+/g, '_');
+
+              const cols = table.getColumns().map(col => col.getDefinition());
+              cols.push({ title, field, editor: "input", headerFilter: "input" });
+              table.setColumns(cols);
+            });
+          });
         });
-      });
     });
   </script>
 </body>
