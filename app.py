@@ -1,71 +1,128 @@
-from flask import Flask, render_template, jsonify, Response
-import requests
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Hockey Roster</title>
 
-app = Flask(__name__)
+  <!-- Tabulator CSS -->
+  <link
+    href="https://unpkg.com/tabulator-tables@5.5.3/dist/css/tabulator.min.css"
+    rel="stylesheet"
+  />
 
-@app.route('/')
-def index():
-    return render_template('index.html')
+  <style>
+    body {
+      font-family: sans-serif;
+      padding: 1rem;
+    }
+    #controls {
+      margin-bottom: 1rem;
+      display: flex;
+      gap: 0.5rem;
+      align-items: center;
+    }
+    #stats-table {
+      margin-top: 0.5rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>Hockey Roster</h1>
 
-@app.route('/teams')
-def teams():
-    # Fetch the current standings/teams
-    resp = requests.get('https://api-web.nhle.com/v1/standings/now')
-    data = resp.json()
-    standings = data.get('standings', [])
+  <div id="controls">
+    <label for="team-select">Select a team:</label>
+    <select id="team-select"></select>
+    <button id="add-col-btn">Add Your Own Column</button>
+  </div>
 
-    # Group teams by division
-    divisions = {}
-    for t in standings:
-        div = t['divisionName']
-        divisions.setdefault(div, []).append({
-            'abbrev': t['teamAbbrev']['default'],
-            'name':   t['teamCommonName']['default'],
-            'logo':   t['teamLogo']
-        })
+  <div id="stats-table"></div>
 
-    return jsonify(divisions)
+  <!-- Tabulator JS -->
+  <script src="https://unpkg.com/tabulator-tables@5.5.3/dist/js/tabulator.min.js"></script>
 
-@app.route('/roster/<team_abbrev>')
-def roster(team_abbrev):
-    # 1) fetch the raw roster
-    r = requests.get(f'https://api-web.nhle.com/v1/roster/{team_abbrev}/current')
-    roster_json = r.json()
-    players = []
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      let table; // Tabulator instance
 
-    # 2) for each skater, fetch landing/stats and pluck
-    for group in ('forwards', 'defensemen', 'goalies'):
-        for p in roster_json.get(group, []):
-            pid = p['id']
-            summ = requests.get(f'https://api-web.nhle.com/v1/player/{pid}/landing').json()
-            fs  = summ.get('featuredStats', {})
-            rs  = fs.get('regularSeason', {}).get('subSeason', {})
-            po  = fs.get('playoffs', {}).get('subSeason', {})
+      // 1) Load teams and populate the selector
+      fetch('/teams')
+        .then(res => res.json())
+        .then(divisions => {
+          const select = document.getElementById('team-select');
+          // flatten divisions → [ { abbrev, name, logo }, … ]
+          const teams = Object.values(divisions).flat();
+          teams.forEach(t => {
+            const opt = document.createElement('option');
+            opt.value = t.abbrev;
+            opt.textContent = t.name;
+            select.appendChild(opt);
+          });
 
-            players.append({
-                'headshot':       p.get('headshot'),
-                'name':           f"{p['firstName']['default']} {p['lastName']['default']}",
-                'number':         p.get('sweaterNumber'),
-                'position':       p.get('positionCode'),
-                'gamesPlayed':    rs.get('gamesPlayed', 0),
-                'goals':          rs.get('goals', 0),
-                'assists':        rs.get('assists', 0),
-                'points':         rs.get('points', 0),
-                'playoffGames':   po.get('gamesPlayed', 0),
-                'playoffGoals':   po.get('goals', 0),
-                'playoffAssists': po.get('assists', 0),
-                'playoffPoints':  po.get('points', 0),
-            })
+          // when user changes team, reload roster
+          select.addEventListener('change', () => loadRoster(select.value));
 
-    # 3) look up the team’s logo from the standings feed
-    std = requests.get('https://api-web.nhle.com/v1/standings/now').json().get('standings', [])
-    logo = next((t['teamLogo'] for t in std if t['teamAbbrev']['default'] == team_abbrev), '')
+          // initial load
+          if (select.value) loadRoster(select.value);
+        });
 
-    return jsonify({ 'logo': logo, 'players': players })
+      // 2) Fetch roster and (re)create/update Tabulator
+      function loadRoster(team) {
+        fetch(`/roster/${team}`)
+          .then(res => res.json())
+          .then(({ players }) => {
+            // base columns pulled from server data
+            const baseCols = [
+              { title: "Name",        field: "name",         headerFilter: "input", editor: "input" },
+              { title: "#",           field: "number",       headerFilter: "input", editor: "input" },
+              { title: "Pos",         field: "position",     headerFilter: "input", editor: "input" },
+              { title: "GP",          field: "gamesPlayed",  headerFilter: "input", editor: "input" },
+              { title: "G",           field: "goals",        headerFilter: "input", editor: "input" },
+              { title: "A",           field: "assists",      headerFilter: "input", editor: "input" },
+              { title: "P",           field: "points",       headerFilter: "input", editor: "input" },
+              { title: "Playoff GP",  field: "playoffGames", headerFilter: "input", editor: "input" },
+              { title: "Playoff G",   field: "playoffGoals", headerFilter: "input", editor: "input" },
+              { title: "Playoff A",   field: "playoffAssists", headerFilter: "input", editor: "input" },
+              { title: "Playoff P",   field: "playoffPoints",  headerFilter: "input", editor: "input" },
+            ];
 
-@app.route('/robots.txt')
-def robots_txt():
-    return Response("User-agent: *\nDisallow:\n", mimetype="text/plain")
+            if (table) {
+              // reset columns to base, then load new data
+              table.setColumns(baseCols);
+              table.replaceData(players);
+            } else {
+              // first-time instantiation
+              table = new Tabulator("#stats-table", {
+                data: players,
+                layout: "fitDataStretch",
+                columns: baseCols,
+                movableColumns: true,          // drag‑and‑drop columns
+                persistence: {
+                  columns: true,               // remember order & visibility
+                  sort:    true,
+                  filter:  true,
+                },
+              });
+            }
+          });
+      }
 
-if __name__ == '__main__':
-    app.run(debug=True)
+      // 3) “Add Your Own Column” button
+      document.getElementById('add-col-btn').addEventListener('click', () => {
+        if (!table) return alert("Please select a team first!");
+
+        const title = prompt("Enter new column title:");
+        if (!title) return;
+
+        // Create a unique field key (no spaces)
+        const field = title.replace(/\s+/g, '_');
+
+        // Append new column definition
+        const cols = table.getColumns().map(col => col.getDefinition());
+        cols.push({ title, field, editor: "input", headerFilter: "input" });
+
+        table.setColumns(cols);
+      });
+    });
+  </script>
+</body>
+</html>
